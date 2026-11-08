@@ -666,6 +666,86 @@ const Hero: React.FC<HeroProps> = ({
 };
 
 /* ===================================================================== */
+/*  DEFS GLOBALES: FILTROS & GRADIENTES                                   */
+/* ===================================================================== */
+const Defs: React.FC<{ step: number }> = ({ step }) => (
+  <svg width={0} height={0} style={{ position: "absolute" }}>
+    <defs>
+      <filter id="boil" x="-4%" y="-4%" width="108%" height="108%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.011 0.013" numOctaves={2} seed={(step % 7) + 2} result="n" />
+        <feDisplacementMap in="SourceGraphic" in2="n" scale={7} xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+      <filter id="wc" x="-5%" y="-5%" width="110%" height="110%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves={3} seed={4} result="n" />
+        <feDisplacementMap in="SourceGraphic" in2="n" scale={16} xChannelSelector="R" yChannelSelector="G" result="d" />
+        <feGaussianBlur in="d" stdDeviation={0.7} />
+      </filter>
+      <linearGradient id="gNight" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#15162A" />
+        <stop offset="0.6" stopColor="#2B2D42" />
+        <stop offset="1" stopColor="#4A4E69" />
+      </linearGradient>
+      <linearGradient id="gDawn" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#F3B98A" />
+        <stop offset="0.55" stopColor="#FBE3B8" />
+        <stop offset="1" stopColor="#FEFAE0" />
+      </linearGradient>
+      <linearGradient id="gWinter" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#8FB0C8" />
+        <stop offset="0.6" stopColor="#CFE3F0" />
+        <stop offset="1" stopColor="#F4F9FF" />
+      </linearGradient>
+      <linearGradient id="gSunset" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#E76F51" />
+        <stop offset="0.5" stopColor="#FFB703" />
+        <stop offset="1" stopColor="#FEFAE0" />
+      </linearGradient>
+      <linearGradient id="gMud" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#BC6C25" />
+        <stop offset="1" stopColor="#7A4412" />
+      </linearGradient>
+      <linearGradient id="gSoil" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#C58B4A" />
+        <stop offset="1" stopColor="#8B5A2B" />
+      </linearGradient>
+      <linearGradient id="gSnowG" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#F4F9FF" />
+        <stop offset="1" stopColor="#BBD3E6" />
+      </linearGradient>
+      <linearGradient id="gBeam" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#FFD166" stopOpacity="0.75" />
+        <stop offset="1" stopColor="#FFD166" stopOpacity="0" />
+      </linearGradient>
+      <linearGradient id="gRoll" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stopColor="#C9A66B" />
+        <stop offset="0.45" stopColor="#FEFAE0" />
+        <stop offset="1" stopColor="#B88C52" />
+      </linearGradient>
+      <radialGradient id="gParch">
+        <stop offset="0" stopColor="#FEFAE0" />
+        <stop offset="0.7" stopColor="#F2DDA8" />
+        <stop offset="1" stopColor="#DDA15E" />
+      </radialGradient>
+      <radialGradient id="gGlowY">
+        <stop offset="0" stopColor="#FFFBE0" stopOpacity="0.95" />
+        <stop offset="0.35" stopColor="#FFD166" stopOpacity="0.6" />
+        <stop offset="1" stopColor="#FFD166" stopOpacity="0" />
+      </radialGradient>
+      <radialGradient id="gGlowG">
+        <stop offset="0" stopColor="#E8FFF1" stopOpacity="0.95" />
+        <stop offset="0.4" stopColor="#74C69D" stopOpacity="0.55" />
+        <stop offset="1" stopColor="#74C69D" stopOpacity="0" />
+      </radialGradient>
+      <radialGradient id="gGlowGold">
+        <stop offset="0" stopColor="#FFF3B0" stopOpacity="0.9" />
+        <stop offset="0.4" stopColor="#FFB703" stopOpacity="0.5" />
+        <stop offset="1" stopColor="#FFB703" stopOpacity="0" />
+      </radialGradient>
+    </defs>
+  </svg>
+);
+
+/* ===================================================================== */
 /*  ESCENARIOS & ELEMENTOS VISUALES                                       */
 /* ===================================================================== */
 const Skyline: React.FC<{ seed: string; base: number; hMin: number; hMax: number; fill: string; lit?: boolean }> = ({
