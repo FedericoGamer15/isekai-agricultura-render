@@ -260,7 +260,7 @@ interface SpriteProps {
 /** Sprite ilustrado con multiply sobre papel, line-boil y squash & stretch. */
 const Sprite: React.FC<SpriteProps> = ({
   src, frame, x, y, w, h, anchor = "bottom", origin, rot = 0, sx = 1, sy = 1,
-  opacity = 1, flip = false, seed = 0, blend = "multiply", filter, boil = 1.4,
+  opacity = 1, flip = false, seed = 0, blend = "normal", filter, boil = 1.4,
 }) => {
   const hh = h ?? w;
   const b = lineBoil(frame, seed, boil);
@@ -529,7 +529,7 @@ export const Scene1IsekaiHook: React.FC<SceneProps & { blink: number }> = ({ loc
   const px = 540 + afraid + (f >= 118 && !landed ? Math.sin(launch * TWO_PI) * 110 : 0);
   const rot = f < 118 ? 0 : landed ? 12 * (1 - land) : launch * 720;
   const studentSrc = f < 110 ? IMG.studentFront : f < 330 ? IMG.studentShocked : IMG.studentFront;
-  const studentBlend: Blend = f < 200 ? "normal" : "multiply";
+  const studentBlend: Blend = "normal";
 
   // Destellos / flash
   const yellow = prog(f, 86, 110) * 0.85 * (1 - prog(f, 112, 134));
@@ -739,7 +739,7 @@ export const Scene2MedievalInefficiency: React.FC<SceneProps> = ({ localFrame: f
         })}
       </Layer>
 
-      <Sprite src={IMG.castle} frame={f} x={780 + o2} y={1090} w={520} h={470} opacity={0.42} filter="grayscale(0.4)" seed={2} />
+      <Sprite src={IMG.castle} frame={f} x={780 + o2} y={1090} w={520} h={470} opacity={1} filter="grayscale(0.4)" seed={2} />
 
       {/* Cartel "Fallow Land" */}
       <Sprite src={IMG.fallowSign} frame={f} x={plotX} y={1390} w={340} h={380} opacity={signOpacity}
@@ -1107,7 +1107,7 @@ export const Scene4LivestockWinterBoom: React.FC<SceneProps> = ({ localFrame: f,
       </Layer>
 
       {/* Castillo congelado (capa 2) */}
-      <Sprite src={IMG.castle} frame={f} x={300} y={1150} w={640} h={600} opacity={0.55 + 0.45 * winter}
+      <Sprite src={IMG.castle} frame={f} x={300} y={1150} w={640} h={600} opacity={1}
         filter={`hue-rotate(${-20 * winter}deg) saturate(${1 - 0.4 * winter}) brightness(${1 + 0.1 * winter})`} seed={2} />
 
       {/* Granero del protagonista */}
