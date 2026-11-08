@@ -1,44 +1,42 @@
-/**
- * World2D.tsx
- * "El truco de agricultura que te hará millonario si reencarnas en un isekai..." (Sistema Norfolk 2D)
- *
- * Remotion · React · TypeScript · SVG puro
- * 1080 x 1920 px · 60 fps · 3600 frames exactos (60.0 s)
- * Estética Light Novel Watercolor / Manga Storytime.
- */
-import React, { createContext, useContext, useMemo } from "react";
+import React, { useMemo } from "react";
 import {
   Audio,
-  Easing,
-  Sequence,
+  Img,
   interpolate,
-  random,
+  interpolateColors,
+  Sequence,
   spring,
   staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
 
-/* ===================================================================== */
-/*  CONSTANTES & TIEMPOS                                                  */
-/* ===================================================================== */
-export const TOTAL_FRAMES = 3600;
-export const SCENE_DURATIONS = [420, 660, 1080, 840, 600];
-export const SCENE_START = [0, 420, 1080, 2160, 3000, 3600];
+/* ════════════════════════════════════════════════════════════════════════════
+   WORLD2D — "El truco de agricultura que te hará millonario si reencarnas en
+   un isekai…" (Sistema Norfolk) · 1080×1920 · 60 fps · 3600 frames = 60 s
+   Estética: Light Novel Watercolor / Manga Storytime (acuarela + line-boil)
+   ════════════════════════════════════════════════════════════════════════════ */
 
-const FPS = 60;
 const W = 1080;
 const H = 1920;
-const TAU = Math.PI * 2;
+const TWO_PI = Math.PI * 2;
 
-export const C = {
+/** Hacia dónde mira cada sprite "de fábrica". */
+const COW_FACES_RIGHT = false;
+const SHEEP_FACES_RIGHT = true;
+
+const SERIF = "'Palatino Linotype','Book Antiqua',Palatino,Georgia,serif";
+const HAND = "'Patrick Hand','Segoe Print','Bradley Hand','Comic Sans MS',cursive";
+
+/* ───────────────────────────── PALETA NARRATIVA ───────────────────────────── */
+const C = {
   // Mundo moderno
   asphalt: "#2B2D42",
-  uniform: "#8D99AE",
-  skin: "#EDF2F4",
-  headlight: "#EF233C",
+  hoodie: "#8D99AE",
+  pale: "#EDF2F4",
+  red: "#EF233C",
   beam: "#FFD166",
-  // Mundo isekai
+  // Isekai campesino
   parch: "#DDA15E",
   mud: "#BC6C25",
   forest: "#606C38",
@@ -50,1543 +48,1550 @@ export const C = {
   gold: "#FFB703",
   turnip: "#9B5DE5",
   barley: "#FB8500",
-  // Auxiliares de acuarela
-  pants: "#3D405B",
-  hair: "#2B2D42",
-  blush: "#F4A6A0",
-  wood: "#8A5A2B",
-  woodDark: "#5E3B1B",
-  snow: "#EAF4FF",
-  ice: "#A9D6E5",
-  wool: "#FFFDF5",
-} as const;
+  // Apoyos
+  velvet: "#9E1B32",
+  skin: "#F1C9A5",
+  pink: "#F4A6B0",
+};
 
-const HAND = "'Caveat', 'Patrick Hand', 'Segoe Print', 'Bradley Hand', 'Comic Sans MS', cursive";
-const CL = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
-const FULL = `M -20 -20 L ${W + 20} -20 L ${W + 20} ${H + 20} L -20 ${H + 20} Z`;
-const SKY_D = "M -70 -70 C 300 -90, 800 -50, 1150 -80 L 1160 1990 C 800 1960, 300 2000, -80 1970 Z";
+/* ──────────────────────────────── ACTIVOS ──────────────────────────────── */
+const CH = (n: string) => staticFile(`assets/2d/characters/${n}.png`);
+const PR = (n: string) => staticFile(`assets/2d/props/${n}.png`);
+const EN = (n: string) => staticFile(`assets/2d/environments/${n}.png`);
 
-/* ===================================================================== */
-/*  HELPERS DE ANIMACIÓN & CLOCK                                          */
-/* ===================================================================== */
-type SprCfg = { damping?: number; stiffness?: number; mass?: number; overshootClamping?: boolean };
+const IMG = {
+  studentFront: CH("student_front"),
+  studentShocked: CH("student_shocked"),
+  studentSmug: CH("student_smug"),
+  studentSlurping: CH("student_slurping"),
+  studentTycoon: CH("student_tycoon"),
+  peasant: CH("medieval_peasant"),
+  sheep: CH("cloud_sheep"),
+  cow: CH("hungry_cow"),
+  dragon: CH("baby_dragon"),
+  nobles: CH("trembling_nobles"),
+  wheat: PR("golden_wheat"),
+  turnip: PR("giant_turnip"),
+  barley: PR("barley_brew"),
+  clover: PR("magic_clover"),
+  fallowSign: EN("fallow_land_sign"),
+  castle: EN("winter_castle"),
+};
 
-const sp = (lf: number, delay = 0, cfg: SprCfg = {}) =>
-  spring({ frame: Math.max(0, lf - delay), fps: FPS, config: { damping: 12, stiffness: 100, ...cfg } });
+// Partículas teñidas con máscara CSS
+const VFX = {
+  light: staticFile("assets/2d/vfx/particles/light_01.png"),
+  star: staticFile("assets/2d/vfx/particles/star_01.png"),
+  dirt: staticFile("assets/2d/vfx/particles/dirt_01.png"),
+  smoke: staticFile("assets/2d/vfx/smoke/smoke_01.png"),
+  fire: staticFile("assets/2d/vfx/particles/fire_01.png"),
+};
 
-const rng = (v: number, a: number[], b: number[], easing?: (t: number) => number) =>
-  interpolate(v, a, b, { ...CL, easing });
+/* ─────────────────────────────── CRONOGRAMA ─────────────────────────────── */
+const SCENE_START = [0, 420, 1080, 2160, 3000];
 
-const EO = Easing.out(Easing.cubic);
-const EI = Easing.in(Easing.cubic);
-const EIO = Easing.inOut(Easing.cubic);
+interface SfxCue {
+  at: number;
+  file: string;
+  volume: number;
+  dur?: number;
+}
+const SFX: SfxCue[] = [
+  // Escena 1
+  { at: 10, file: "whooshes/whoosh_cinematic.wav", volume: 0.8 },
+  { at: 110, file: "impacts/sub_impact_thud.wav", volume: 0.9 },
+  { at: 240, file: "impacts/sub_impact_thud.wav", volume: 0.6 }, // aterrizaje en el lodo
+  { at: 240, file: "ui/switch1.wav", volume: 0.7 },
+  // Escena 2
+  { at: 430, file: "ambience/tension_riser.wav", volume: 0.5, dur: 300 },
+  { at: 680, file: "ui/mouseclick1.wav", volume: 0.6 },
+  { at: 780, file: "ui/mouseclick1.wav", volume: 0.8 }, // goma frota el letrero
+  // Escena 3
+  { at: 1090, file: "ui/click1.wav", volume: 0.75 },
+  { at: 1250, file: "ui/click1.wav", volume: 0.6 },
+  { at: 1410, file: "ui/click1.wav", volume: 0.6 },
+  { at: 1500, file: "ui/switch5.wav", volume: 0.8 },
+  { at: 1580, file: "ui/click1.wav", volume: 0.6 },
+  { at: 1750, file: "ui/click1.wav", volume: 0.6 },
+  { at: 1900, file: "whooshes/whoosh_fast.wav", volume: 0.7 }, // 1.ª rotación anual
+  // Escena 4
+  { at: 2170, file: "impacts/sub_impact_thud.wav", volume: 0.85 },
+  { at: 2540, file: "ui/switch2.wav", volume: 0.7 }, // llega el invierno
+  { at: 2860, file: "whooshes/whoosh_cinematic.wav", volume: 0.9 }, // moneda hacia cámara
+  // Escena 5
+  { at: 3010, file: "ui/mouseclick1.wav", volume: 0.7 },
+  { at: 3560, file: "whooshes/whoosh_fast.wav", volume: 0.9 }, // remolino del loop
+];
+
+/* ─────────────────────────────── UTILIDADES ─────────────────────────────── */
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-
-const squash = (lf: number, land: number, fallStart = land - 18) => {
-  if (lf < land) {
-    const s = rng(lf, [fallStart, land], [0, 1]);
-    return { sx: 1 - 0.1 * s, sy: 1 + 0.15 * s };
-  }
-  const k = sp(lf, land);
-  return { sx: interpolate(k, [0, 1], [1.18, 1]), sy: interpolate(k, [0, 1], [0.85, 1]) };
+const prog = (f: number, a: number, b: number) => clamp01((f - a) / (b - a));
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+const easeIn = (t: number) => t * t * t;
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const rand = (i: number) => {
+  const s = Math.sin(i * 127.1 + 311.7) * 43758.5453;
+  return s - Math.floor(s);
 };
 
-const Clock = createContext<{ gf: number; step: number }>({ gf: 0, step: 0 });
-const useClock = () => useContext(Clock);
-const wx = (step: number, seed: number, amp: number) => Math.sin(step * 17.3 + seed * 5.7) * amp;
-const wy = (step: number, seed: number, amp: number) => Math.cos(step * 23.7 + seed * 3.1) * amp;
+const SPRING = { damping: 12, stiffness: 100 };
 
-const f1 = (n: number) => n.toFixed(1);
+/** Spring seguro (0 antes de `start`). */
+const pop = (f: number, start: number, fps: number, config = SPRING) =>
+  f < start ? 0 : spring({ frame: f - start, fps, config });
 
-const smooth = (p: number[][], closed = true) => {
-  const n = p.length;
-  const at = (k: number) => (closed ? p[((k % n) + n) % n] : p[Math.min(Math.max(k, 0), n - 1)]);
-  let d = `M ${f1(p[0][0])} ${f1(p[0][1])}`;
-  const segs = closed ? n : n - 1;
-  for (let i = 0; i < segs; i++) {
-    const p0 = at(i - 1);
-    const p1 = at(i);
-    const p2 = at(i + 1);
-    const p3 = at(i + 2);
-    d += ` C ${f1(p1[0] + (p2[0] - p0[0]) / 6)} ${f1(p1[1] + (p2[1] - p0[1]) / 6)}, ${f1(p2[0] - (p3[0] - p1[0]) / 6)} ${f1(p2[1] - (p3[1] - p1[1]) / 6)}, ${f1(p2[0])} ${f1(p2[1])}`;
-  }
-  return closed ? d + " Z" : d;
+/** Spring + squash & stretch (elongación en subida, aplastamiento al asentarse). */
+const springSquash = (f: number, start: number, fps: number) => {
+  const g = pop(f, start, fps);
+  const gp = pop(f - 1, start, fps);
+  const st = Math.max(-0.12, Math.min(0.15, (g - gp) * 3.2));
+  return {
+    g,
+    sx: Math.max(0.001, (0.5 + 0.5 * g) * (1 - st * 0.9)), // 0.90 en subida
+    sy: Math.max(0.001, g * (1 + st)), // 1.15 en subida
+  };
 };
 
-const blob = (cx: number, cy: number, rx: number, ry: number, seed: string | number, n = 9, amp = 0.09) =>
-  smooth(
-    Array.from({ length: n }, (_, i) => {
-      const a = (i / n) * TAU;
-      const k = 1 + (random(`b${seed}-${i}`) - 0.5) * 2 * amp;
-      return [cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k];
-    }),
-  );
+/** Line-boil: vibración de dibujo a mano a 20 fps (cada 3 frames @60). */
+const lineBoil = (frame: number, seed = 0, amp = 1.8) => {
+  const s = Math.floor(frame / 3);
+  return {
+    x: Math.sin(s * 17.3 + seed * 3.1) * amp,
+    y: Math.cos(s * 23.7 + seed * 5.3) * amp,
+    r: (((s + Math.floor(seed)) % 3) - 1) * 0.35,
+  };
+};
 
-const cloud = (cx: number, cy: number, rx: number, ry: number, seed: string | number, n = 11) => {
-  const pts = Array.from({ length: n }, (_, i) => {
-    const a = (i / n) * TAU;
-    const k = 1 + (random(`c${seed}-${i}`) - 0.5) * 0.18;
-    return [cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k];
+type Pt = [number, number];
+
+/** Mancha de acuarela orgánica (curva cerrada suavizada). */
+const blob = (cx: number, cy: number, rx: number, ry: number, seed: number, n = 14, wob = 0.1) => {
+  const pts: Pt[] = Array.from({ length: n }, (_, i) => {
+    const a = (i / n) * TWO_PI;
+    const r = 1 + (rand(seed * 13 + i) - 0.5) * 2 * wob;
+    return [cx + Math.cos(a) * rx * r, cy + Math.sin(a) * ry * r];
   });
-  let d = `M ${f1(pts[0][0])} ${f1(pts[0][1])}`;
+  const mid = (a: Pt, b: Pt): Pt => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const m0 = mid(pts[n - 1], pts[0]);
+  let d = `M${m0[0].toFixed(1)},${m0[1].toFixed(1)}`;
   for (let i = 0; i < n; i++) {
-    const a = pts[i];
-    const b = pts[(i + 1) % n];
-    const chord = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    d += ` A ${f1(chord * 0.62)} ${f1(chord * 0.62)} 0 0 1 ${f1(b[0])} ${f1(b[1])}`;
+    const m = mid(pts[i], pts[(i + 1) % n]);
+    d += ` Q${pts[i][0].toFixed(1)},${pts[i][1].toFixed(1)} ${m[0].toFixed(1)},${m[1].toFixed(1)}`;
   }
-  return d + " Z";
+  return d + "Z";
 };
 
-const limb = (len: number, w0: number, w1: number) =>
-  `M ${-w0 / 2} 0 C ${-w0 / 2 - 2} ${len * 0.35}, ${-w1 / 2 - 1} ${len * 0.7}, ${-w1 / 2} ${len} L ${w1 / 2} ${len} C ${w1 / 2 + 1} ${len * 0.7}, ${w0 / 2 + 2} ${len * 0.35}, ${w0 / 2} 0 Z`;
-
-/* ===================================================================== */
-/*  PRIMITIVAS VECTORIALES (LINE-BOIL & WATERCOLOR)                       */
-/* ===================================================================== */
-const Shape: React.FC<{
-  d: string;
-  fill?: string;
-  w?: number;
-  seed?: number;
-  stroke?: string;
-  opacity?: number;
-  nostroke?: boolean;
-}> = ({ d, fill = "none", w = 4, seed = 0, stroke = C.ink, opacity = 1, nostroke = false }) => {
-  const { step } = useClock();
-  const ox = wx(step, seed, 1.2);
-  const oy = wy(step, seed, 1.2);
-  return (
-    <g opacity={opacity}>
-      <path d={d} fill={fill} stroke={nostroke ? "none" : stroke} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
-      {!nostroke && (
-        <path
-          d={d}
-          fill="none"
-          stroke={stroke}
-          strokeWidth={w * 0.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          opacity={0.55}
-          transform={`translate(${ox} ${oy})`}
-        />
-      )}
-    </g>
-  );
+/** Borde irregular tipo papel cortado a mano. */
+const wobblyRect = (x: number, y: number, w: number, h: number, seed: number, amp = 6, step = 70) => {
+  const pts: Pt[] = [];
+  const nx = Math.max(2, Math.round(w / step));
+  const ny = Math.max(2, Math.round(h / step));
+  let k = 0;
+  const j = () => (rand(seed * 31 + k++) - 0.5) * 2 * amp;
+  for (let i = 0; i < nx; i++) pts.push([x + (w * i) / nx + j(), y + j()]);
+  for (let i = 0; i < ny; i++) pts.push([x + w + j(), y + (h * i) / ny + j()]);
+  for (let i = 0; i < nx; i++) pts.push([x + w - (w * i) / nx + j(), y + h + j()]);
+  for (let i = 0; i < ny; i++) pts.push([x + j(), y + h - (h * i) / ny + j()]);
+  return "M" + pts.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" L") + "Z";
 };
 
-const Tube: React.FC<{ d: string; w: number; fill: string; line?: string; opacity?: number }> = ({
-  d,
-  w,
-  fill,
-  line = C.ink,
-  opacity = 1,
-}) => (
-  <g opacity={opacity} fill="none" strokeLinecap="round" strokeLinejoin="round">
-    <path d={d} stroke={line} strokeWidth={w + 8} />
-    <path d={d} stroke={fill} strokeWidth={w} />
-  </g>
-);
-
-const Wash: React.FC<{ d: string; fill: string; opacity?: number }> = ({ d, fill, opacity = 1 }) => (
-  <path d={d} fill={fill} opacity={opacity} filter="url(#wc)" />
-);
-
-const Sparkle: React.FC<{ x: number; y: number; r: number; fill?: string; rot?: number; opacity?: number }> = ({
-  x,
-  y,
-  r,
-  fill = C.gold,
-  rot = 0,
-  opacity = 1,
-}) => (
-  <path
-    d={`M 0 ${-r} Q 0 0 ${r} 0 Q 0 0 0 ${r} Q 0 0 ${-r} 0 Q 0 0 0 ${-r} Z`}
-    transform={`translate(${x} ${y}) rotate(${rot})`}
-    fill={fill}
-    opacity={opacity}
-    stroke={C.ink}
-    strokeWidth={1.5}
-    strokeLinejoin="round"
-  />
-);
-
-const Coin: React.FC<{ x: number; y: number; r?: number; s?: number; rot?: number; seed?: number; sx?: number }> = ({
-  x,
-  y,
-  r = 22,
-  s = 1,
-  rot = 0,
-  seed = 0,
-  sx = 1,
-}) => (
-  <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${s * sx} ${s})`}>
-    <Shape d={blob(0, 0, r, r * 1.03, `coin${seed}`, 10, 0.025)} fill={C.gold} w={3.5} seed={seed} />
-    <path d={blob(0, 0, r * 0.7, r * 0.72, `coin-in${seed}`, 10, 0.025)} fill="none" stroke={C.barley} strokeWidth={2.5} />
-    <path
-      d={`M 0 ${r * 0.4} Q ${r * 0.08} 0 0 ${-r * 0.4} M 0 ${-r * 0.1} Q ${-r * 0.3} ${-r * 0.2} ${-r * 0.32} ${-r * 0.36} M 0 ${-r * 0.1} Q ${r * 0.3} ${-r * 0.2} ${r * 0.32} ${-r * 0.36}`}
-      stroke={C.barley}
-      strokeWidth={2.5}
-      fill="none"
-      strokeLinecap="round"
-    />
-    <path
-      d={`M ${-r * 0.6} ${-r * 0.25} Q ${-r * 0.45} ${-r * 0.66} ${r * 0.05} ${-r * 0.78}`}
-      stroke="#FFF3B0"
-      strokeWidth={3.5}
-      fill="none"
-      strokeLinecap="round"
-    />
-  </g>
-);
-
-type DriftKind = "sparkle" | "snow" | "shaving" | "dust";
-const Drift: React.FC<{
-  lf: number;
-  n: number;
-  seed: string;
-  kind: DriftKind;
-  x0?: number;
-  x1?: number;
-  y0?: number;
-  y1?: number;
-  speed?: number;
-  dir?: 1 | -1;
-  size?: number;
-  color?: string;
-  opacity?: number;
-}> = ({ lf, n, seed, kind, x0 = 0, x1 = W, y0 = 0, y1 = H, speed = 1, dir = -1, size = 10, color = C.gold, opacity = 1 }) => (
-  <g opacity={opacity}>
-    {Array.from({ length: n }, (_, i) => {
-      const rx = random(`${seed}x${i}`);
-      const ry = random(`${seed}y${i}`);
-      const rs = random(`${seed}s${i}`);
-      const rp = random(`${seed}p${i}`);
-      const span = y1 - y0;
-      const prog = (((ry + (dir * lf * speed * (0.5 + rs)) / span) % 1) + 1) % 1;
-      const px = x0 + rx * (x1 - x0) + Math.sin(lf * 0.025 + rp * TAU) * 26;
-      const py = y0 + prog * span;
-      const a = Math.min(1, Math.min(prog, 1 - prog) * 8);
-      const s = size * (0.55 + rs * 0.9);
-      const rot = (lf * (1 + rp * 2) + rp * 360) % 360;
-      if (kind === "sparkle") return <Sparkle key={i} x={px} y={py} r={s} fill={color} rot={rot * 0.3} opacity={a} />;
-      if (kind === "snow")
-        return (
-          <path
-            key={i}
-            d={blob(0, 0, s * 0.5, s * 0.5, i, 6, 0.15)}
-            transform={`translate(${px} ${py})`}
-            fill="#FFFFFF"
-            stroke="#BFD7EA"
-            strokeWidth={1}
-            opacity={a * 0.9}
-          />
-        );
-      if (kind === "shaving")
-        return (
-          <path
-            key={i}
-            d="M 0 0 C 9 -12, 24 -8, 22 4 C 18 14, 4 10, 9 3"
-            transform={`translate(${px} ${py}) rotate(${rot})`}
-            fill="#F4B6B0"
-            stroke={C.ink}
-            strokeWidth={1.8}
-            opacity={a}
-          />
-        );
-      return (
-        <path key={i} d={blob(0, 0, s * 0.4, s * 0.3, i, 6, 0.2)} transform={`translate(${px} ${py})`} fill={color} opacity={a * 0.55} />
-      );
-    })}
-  </g>
-);
-
-/* ===================================================================== */
-/*  OJOS CON OCLUSIÓN SÓLIDA (<clipPath> + fill={skin})                  */
-/* ===================================================================== */
-const Eye: React.FC<{
-  uid: string;
-  x: number;
-  y: number;
-  rx?: number;
-  ry?: number;
-  blink: number;
-  lid?: number;
-  skin: string;
-  iris?: string;
-  look?: [number, number];
-  outerLeft?: boolean;
-  bag?: number;
-  w?: number;
-}> = ({ uid, x, y, rx = 21, ry = 25, blink, lid = 0, skin, iris = C.forest, look = [0, 0], outerLeft = false, bag = 0, w = 3 }) => {
-  const k = Math.max(blink, lid);
-  const c1 = rx * 1.05;
-  const cl = ry * (4 / 3) * (1 - 0.35 * k);
-  const cu = lerp(-ry * (4 / 3), cl, k);
-  const open = `M ${-rx} 0 C ${-c1} ${(-ry * 4) / 3}, ${c1} ${(-ry * 4) / 3}, ${rx} 0 C ${c1} ${(ry * 4) / 3}, ${-c1} ${(ry * 4) / 3}, ${-rx} 0 Z`;
-  const upper = `M ${-rx} 0 C ${-c1} ${cu}, ${c1} ${cu}, ${rx} 0`;
-  const lower = `M ${rx} 0 C ${c1} ${cl}, ${-c1} ${cl}, ${-rx} 0`;
-  const lidTop = `M ${-rx - 10} ${-ry - 14} L ${rx + 10} ${-ry - 14} L ${rx + 10} 0 L ${rx} 0 C ${c1} ${cu}, ${-c1} ${cu}, ${-rx} 0 L ${-rx - 10} 0 Z`;
-  const lidBot = `M ${-rx - 10} 0 L ${-rx} 0 C ${-c1} ${cl}, ${c1} ${cl}, ${rx} 0 L ${rx + 10} 0 L ${rx + 10} ${ry + 14} L ${-rx - 10} ${ry + 14} Z`;
-  return (
-    <g transform={`translate(${x} ${y})`}>
-      <defs>
-        <clipPath id={uid}>
-          <path d={open} />
-        </clipPath>
-      </defs>
-      <g clipPath={`url(#${uid})`}>
-        <path d={open} fill="#FFFEF8" />
-        <g transform={`translate(${look[0]} ${look[1]})`}>
-          <ellipse cx={0} cy={2} rx={rx * 0.64} ry={ry * 0.8} fill={iris} />
-          <ellipse cx={0} cy={3} rx={rx * 0.34} ry={ry * 0.46} fill={C.asphalt} />
-          <circle cx={-rx * 0.2} cy={-ry * 0.28} r={rx * 0.17} fill="#fff" />
-          <circle cx={rx * 0.2} cy={ry * 0.22} r={rx * 0.09} fill="#fff" opacity={0.9} />
-        </g>
-        <path d={lidTop} fill={skin} />
-        <path d={lidBot} fill={skin} />
-      </g>
-      <path d={upper} fill="none" stroke={C.ink} strokeWidth={w * 1.8} strokeLinecap="round" />
-      <path d={lower} fill="none" stroke={C.ink} strokeWidth={w * 0.8} strokeLinecap="round" opacity={0.8} />
-      <path
-        d={`M ${rx} 0 q 7 -2 11 -9`}
-        transform={outerLeft ? "scale(-1 1)" : undefined}
-        stroke={C.ink}
-        strokeWidth={w * 1.4}
-        fill="none"
-        strokeLinecap="round"
-      />
-      {bag > 0 && (
-        <g opacity={bag}>
-          <path
-            d={`M ${-rx} ${ry} Q 0 ${ry * 1.85} ${rx} ${ry} Q 0 ${ry * 1.4} ${-rx} ${ry} Z`}
-            fill="#9D8AB5"
-            opacity={0.45}
-          />
-          <path d={`M ${-rx * 0.9} ${ry * 1.08} Q 0 ${ry * 1.7} ${rx * 0.9} ${ry * 1.08}`} stroke="#7D6B91" strokeWidth={3} fill="none" strokeLinecap="round" />
-        </g>
-      )}
-    </g>
-  );
+const starPath = (R: number, r: number, n: number) => {
+  const pts: string[] = [];
+  for (let i = 0; i < n * 2; i++) {
+    const rad = i % 2 === 0 ? R : r;
+    const a = (i / (n * 2)) * TWO_PI - Math.PI / 2;
+    pts.push(`${(Math.cos(a) * rad).toFixed(1)},${(Math.sin(a) * rad).toFixed(1)}`);
+  }
+  return "M" + pts.join(" L") + "Z";
 };
 
-const HandShape: React.FC<{ skin: string; seed: number; s?: number }> = ({ skin, seed, s = 1 }) => (
-  <g transform={`scale(${s})`}>
-    <Shape d={blob(0, 8, 15, 18, `hand${seed}`, 8, 0.05)} fill={skin} w={3.5} seed={seed} />
-    <path d="M -7 14 q 0 6 -2 10 M 1 18 q 0 6 0 10 M 8 14 q 1 6 3 10" stroke={C.ink} strokeWidth={2.4} fill="none" strokeLinecap="round" />
-  </g>
+const gearPath = (r: number, teeth: number, depth: number) => {
+  const step = TWO_PI / teeth;
+  const pts: string[] = [];
+  for (let i = 0; i < teeth; i++) {
+    const a0 = i * step;
+    ([[0, r - depth], [0.15, r], [0.45, r], [0.6, r - depth]] as Pt[]).forEach(([k, rad]) => {
+      const a = a0 + k * step;
+      pts.push(`${(Math.cos(a) * rad).toFixed(1)},${(Math.sin(a) * rad).toFixed(1)}`);
+    });
+  }
+  return "M" + pts.join(" L") + "Z";
+};
+
+/* ──────────────────────────── PRIMITIVAS VISUALES ──────────────────────────── */
+type Blend = React.CSSProperties["mixBlendMode"];
+
+const PaperBase: React.FC<{ color?: string }> = ({ color = C.paper }) => (
+  <div style={{ position: "absolute", inset: 0, backgroundColor: color }} />
 );
 
-/* ===================================================================== */
-/*  PUPPET RIG COMPLETO: HERO                                             */
-/* ===================================================================== */
-type Pose = {
-  hipL?: number;
-  kneeL?: number;
-  hipR?: number;
-  kneeR?: number;
-  shL?: number;
-  elL?: number;
-  shR?: number;
-  elR?: number;
-  thigh?: number;
-  lean?: number;
-  tilt?: number;
-};
-
-type HeroProps = {
-  uid: string;
-  x: number;
-  y: number;
-  scale?: number;
-  rot?: number;
-  sx?: number;
-  sy?: number;
-  flip?: boolean;
-  blink: number;
-  lid?: number;
-  look?: [number, number];
-  brow?: number;
-  surprise?: number;
-  smile?: number;
-  open?: number;
-  tired?: number;
-  sweat?: number;
-  mud?: number;
-  blush?: number;
-  top?: "blazer" | "hoodie";
-  cape?: boolean;
-  scarf?: boolean;
-  pack?: number;
-  pose?: Pose;
-  heldL?: React.ReactNode;
-  heldR?: React.ReactNode;
-};
-
-const Hero: React.FC<HeroProps> = ({
-  uid,
-  x,
-  y,
-  scale = 1,
-  rot = 0,
-  sx = 1,
-  sy = 1,
-  flip = false,
-  blink,
-  lid = 0,
-  look = [0, 0],
-  brow = 0,
-  surprise = 0,
-  smile = 0,
-  open = 0,
-  tired = 0,
-  sweat = 0,
-  mud = 0,
-  blush = 0,
-  top = "blazer",
-  cape = false,
-  scarf = false,
-  pack = -1,
-  pose = {},
-  heldL,
-  heldR,
-}) => {
-  const { gf } = useClock();
-  const {
-    hipL = 4,
-    kneeL = 0,
-    hipR = 4,
-    kneeR = 0,
-    shL = 8,
-    elL = 8,
-    shR = 8,
-    elR = 8,
-    thigh = 170,
-    lean = 0,
-    tilt = 0,
-  } = pose;
-  const skin = C.skin;
-  const breathe = Math.sin((gf / 120) * TAU);
-  const hipY = -(thigh + 190);
-  const wag = Math.sin((gf / 90) * TAU) * 6;
-  const es = 1 + 0.14 * surprise;
-  const mw = 17 - open * 4;
-  const mouthD = `M ${-mw} 62 Q 0 ${62 + smile * 14} ${mw} 62 Q 0 ${62 + smile * 14 + open * 34} ${-mw} 62 Z`;
-  const bI = -34 - 12 * brow - 11 * surprise;
-  const bO = -34 + 4 * brow - 11 * surprise;
-  const sc = flip ? -1 : 1;
-
-  const leg = (s: 1 | -1, hip: number, knee: number) => (
-    <g transform={`translate(${-s * 36} ${hipY}) rotate(${s * hip})`}>
-      <Shape d={limb(thigh, 42, 32)} fill={C.pants} w={4} seed={s + 2} />
-      <g transform={`translate(0 ${thigh}) rotate(${s * knee})`}>
-        <Shape d={limb(160, 31, 22)} fill={C.pants} w={4} seed={s + 4} />
-        <g transform="translate(0 160)">
-          <Shape
-            d="M -14 -6 L 14 -6 C 18 8, 34 12, 38 28 C 38 36, -38 36, -38 28 C -34 12, -18 8, -14 -6 Z"
-            fill={C.skin}
-            w={4}
-            seed={s + 6}
-          />
-          <path d="M -37 29 C -26 38, 26 38, 37 29" stroke={C.headlight} strokeWidth={6} fill="none" strokeLinecap="round" />
-          <path d="M -8 4 L 8 4 M -9 12 L 9 12" stroke={C.ink} strokeWidth={2.5} strokeLinecap="round" />
-        </g>
-      </g>
-    </g>
-  );
-
-  const arm = (s: 1 | -1, sh: number, el: number, held?: React.ReactNode) => (
-    <g transform={`translate(${-s * 66} -206) rotate(${s * sh})`}>
-      <Shape d={limb(122, 38, 31)} fill={C.uniform} w={4} seed={20 + s} />
-      <g transform={`translate(0 122) rotate(${-s * el})`}>
-        <Shape d={limb(112, 29, 23)} fill={C.uniform} w={4} seed={22 + s} />
-        <path d="M -14 98 L 14 98" stroke="#fff" strokeWidth={6} strokeLinecap="round" />
-        <g transform={`translate(0 118) rotate(${-s * (sh - el)})`}>
-          {held}
-          <HandShape skin={skin} seed={s + 5} />
-        </g>
-      </g>
-    </g>
-  );
-
-  return (
-    <g>
-      {Math.abs(rot) < 5 && (
-        <g transform={`translate(${x} ${y})`}>
-          <path d={blob(0, 8, 130 * scale, 18 * scale, `hs${uid}`, 8, 0.1)} fill="#000" opacity={0.15} />
-        </g>
-      )}
-      <g transform={`translate(${x} ${y}) rotate(${rot}) scale(${sx * scale * sc} ${sy * scale})`}>
-        {cape && (
-          <g transform={`translate(0 ${hipY})`}>
-            <Shape
-              d="M -72 -226 C -134 -120, -176 70, -196 336 Q 0 392 196 336 C 176 70, 134 -120, 72 -226 Z"
-              fill={C.turnip}
-              w={4.5}
-              seed={30}
-            />
-            <path d="M -40 -200 C -70 -60, -96 120, -110 330 M 40 -200 C 70 -60, 96 120, 110 330" stroke="#7A3FC0" strokeWidth={5} fill="none" opacity={0.6} />
-            <path d="M -196 336 Q 0 392 196 336" stroke={C.gold} strokeWidth={9} fill="none" strokeLinecap="round" />
-          </g>
-        )}
-
-        {leg(1, hipL, kneeL)}
-        {leg(-1, hipR, kneeR)}
-
-        <g transform={`translate(0 ${hipY}) rotate(${lean})`}>
-          {pack >= 0 && (
-            <g transform={`scale(${1 + 0.18 * Math.sin(pack * Math.PI)})`}>
-              <g opacity={1 - pack}>
-                <Shape
-                  d="M -84 -214 C -118 -196, -122 -60, -92 -6 L 92 -6 C 122 -60, 118 -196, 84 -214 C 40 -236, -40 -236, -84 -214 Z"
-                  fill="#4A4E69"
-                  w={4.5}
-                  seed={14}
-                />
-                <path d="M -50 -120 L 50 -120 L 46 -40 L -46 -40 Z" fill="#5A5F80" stroke={C.ink} strokeWidth={3} />
-                <path d="M -40 -222 Q 0 -240 40 -222" stroke={C.headlight} strokeWidth={5} fill="none" strokeLinecap="round" />
-              </g>
-              <g opacity={pack}>
-                <Shape
-                  d="M -86 -212 C -122 -180, -126 -70, -96 -2 L 96 -2 C 126 -70, 122 -180, 86 -212 L 60 -236 L 30 -222 L 0 -240 L -30 -222 L -60 -236 Z"
-                  fill={C.parch}
-                  w={4.5}
-                  seed={15}
-                />
-                <path d="M -72 -196 Q 0 -180 72 -196" stroke={C.woodDark} strokeWidth={7} fill="none" strokeLinecap="round" />
-                <path d="M 40 -70 L 74 -34 L 62 -2 L 30 -12 Z" fill="#7A4412" stroke={C.ink} strokeWidth={3} />
-                <path d="M -60 -120 l 16 10 M -20 -140 l 16 12 M 20 -110 l 18 8" stroke={C.woodDark} strokeWidth={3} fill="none" strokeLinecap="round" />
-              </g>
-            </g>
-          )}
-
-          <g transform={`scale(1 ${1 + 0.012 * breathe})`}>
-            <Shape d="M -52 22 C -58 -60, -66 -150, -68 -224 C -40 -242, 40 -242, 68 -224 C 66 -150, 58 -60, 52 22 Z" fill={C.uniform} w={4.5} seed={11} />
-            <path d="M 22 -230 C 40 -160, 46 -60, 42 22 L 52 22 C 58 -60, 66 -150, 68 -224 Z" fill="#000" opacity={0.1} />
-            {top === "blazer" ? (
-              <g>
-                <path d="M -24 -238 L 0 -148 L 24 -238 Z" fill="#fff" stroke={C.ink} strokeWidth={3} strokeLinejoin="round" />
-                <path d="M -7 -206 L 7 -206 L 11 -124 L 0 -106 L -11 -124 Z" fill={C.headlight} stroke={C.ink} strokeWidth={3} strokeLinejoin="round" />
-                <path d="M -24 -238 L -38 -150 L -8 -118 M 24 -238 L 38 -150 L 8 -118" stroke={C.ink} strokeWidth={3.5} fill="none" strokeLinecap="round" />
-              </g>
-            ) : (
-              <g>
-                <Shape d="M -66 -226 C -86 -266, -40 -284, 0 -266 C 40 -284, 86 -266, 66 -226 C 40 -242, -40 -242, -66 -226 Z" fill="#7A869F" w={4} seed={12} />
-                <path d="M -14 -236 L -16 -170 M 14 -236 L 18 -164" stroke={C.paper} strokeWidth={4} strokeLinecap="round" />
-                <Shape d="M -46 -84 C -20 -62, 20 -62, 46 -84 L 54 -22 L -54 -22 Z" fill="#7A869F" w={3.5} seed={13} />
-              </g>
-            )}
-            {mud > 0 && (
-              <g opacity={mud}>
-                <path d={blob(-24, -120, 36, 26, "tm1", 8, 0.2)} fill="#7A4412" />
-                <path d={blob(30, -60, 26, 20, "tm2", 8, 0.2)} fill="#7A4412" />
-              </g>
-            )}
-            <Shape d="M -54 -8 Q 0 2 54 -8 L 53 16 Q 0 26 -53 16 Z" fill={C.woodDark} w={4} seed={16} />
-            <Shape d="M -11 -1 Q 0 -4 11 -1 L 12 17 Q 0 20 -12 17 Z" fill={C.gold} w={3} seed={17} />
-          </g>
-
-          {scarf && (
-            <g>
-              <Tube d="M -56 -234 C -22 -210, 22 -210, 56 -234" w={26} fill={C.headlight} />
-              <Tube d="M 34 -222 C 56 -176, 44 -136, 62 -96" w={20} fill={C.headlight} />
-            </g>
-          )}
-          {cape && (
-            <g>
-              <Shape d={cloud(0, -236, 86, 28, "fur", 14)} fill={C.wool} w={4} seed={31} />
-              <Shape d={blob(0, -226, 11, 11, "clasp", 7, 0.08)} fill={C.gold} w={3} seed={32} />
-            </g>
-          )}
-
-          {arm(1, shL, elL, heldL)}
-          {arm(-1, shR, elR, heldR)}
-
-          <g transform={`translate(0 -345) rotate(${tilt})`}>
-            <Shape
-              d="M -92 -20 C -100 -110, -50 -135, 0 -134 C 50 -135, 100 -110, 92 -20 C 96 20, 84 40, 78 20 L -78 20 C -84 40, -96 20, -92 -20 Z"
-              fill={C.hair}
-              w={4}
-              seed={40}
-            />
-            <Shape d="M -78 -4 C -94 -8, -96 26, -78 28 Z" fill={skin} w={3.5} seed={41} />
-            <Shape d="M 78 -4 C 94 -8, 96 26, 78 28 Z" fill={skin} w={3.5} seed={42} />
-            <Shape
-              d="M -78 -10 C -82 -70, -50 -100, 0 -102 C 50 -100, 82 -70, 78 -10 C 76 40, 40 84, 0 90 C -40 84, -76 40, -78 -10 Z"
-              fill={skin}
-              w={4.5}
-              seed={43}
-            />
-            {blush > 0 && (
-              <g opacity={blush * 0.7}>
-                <path d={blob(-48, 38, 20, 11, "bl1", 8, 0.1)} fill={C.blush} />
-                <path d={blob(48, 38, 20, 11, "bl2", 8, 0.1)} fill={C.blush} />
-              </g>
-            )}
-            <Eye uid={`${uid}-eL`} x={-34} y={8} rx={21 * es} ry={25 * es} blink={blink} lid={lid} skin={skin} look={look} outerLeft bag={tired} />
-            <Eye uid={`${uid}-eR`} x={34} y={8} rx={21 * es} ry={25 * es} blink={blink} lid={lid} skin={skin} look={look} bag={tired} />
-            <path d={`M -60 ${bO} Q -36 ${bI - 8} -12 ${bI}`} stroke={C.ink} strokeWidth={6} fill="none" strokeLinecap="round" />
-            <path d={`M 60 ${bO} Q 36 ${bI - 8} 12 ${bI}`} stroke={C.ink} strokeWidth={6} fill="none" strokeLinecap="round" />
-            <path d="M -2 40 Q 5 46 9 42" stroke={C.ink} strokeWidth={3} fill="none" strokeLinecap="round" />
-            <path d={mouthD} fill={open > 0.05 ? "#7A2E2E" : "none"} stroke={C.ink} strokeWidth={3.5} strokeLinejoin="round" strokeLinecap="round" />
-            {mud > 0 && (
-              <g opacity={mud}>
-                <path d={blob(-40, 36, 24, 16, "fm1", 8, 0.2)} fill="#7A4412" />
-                <path d={blob(30, -56, 18, 12, "fm2", 8, 0.2)} fill="#7A4412" />
-              </g>
-            )}
-            {sweat > 0 && (
-              <path
-                d="M 0 -14 C 8 2, 10 10, 0 16 C -10 10, -8 2, 0 -14 Z"
-                transform={`translate(74 ${-40 + sweat * 46})`}
-                fill="#BFE3F5"
-                stroke={C.ink}
-                strokeWidth={2.5}
-                opacity={Math.min(1, sweat * 3)}
-              />
-            )}
-            <Shape
-              d="M -86 -26 C -92 -100, -40 -122, 0 -118 C 44 -122, 94 -100, 86 -26 C 80 -52, 64 -62, 48 -66 L 38 -42 L 22 -70 L 6 -50 L -10 -72 L -26 -48 L -42 -70 C -60 -62, -76 -50, -86 -26 Z"
-              fill={C.hair}
-              w={4}
-              seed={44}
-            />
-            <path
-              d={`M -4 -118 C ${-10 + wag} -150, ${20 + wag * 1.5} -158, ${14 + wag * 2} -176`}
-              stroke={C.ink}
-              strokeWidth={5}
-              fill="none"
-              strokeLinecap="round"
-            />
-          </g>
-        </g>
-      </g>
-    </g>
-  );
-};
-
-/* ===================================================================== */
-/*  DEFS GLOBALES: FILTROS & GRADIENTES                                   */
-/* ===================================================================== */
-const Defs: React.FC<{ step: number }> = ({ step }) => (
-  <svg width={0} height={0} style={{ position: "absolute" }}>
-    <defs>
-      <filter id="boil" x="-4%" y="-4%" width="108%" height="108%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.011 0.013" numOctaves={2} seed={(step % 7) + 2} result="n" />
-        <feDisplacementMap in="SourceGraphic" in2="n" scale={7} xChannelSelector="R" yChannelSelector="G" />
-      </filter>
-      <filter id="wc" x="-5%" y="-5%" width="110%" height="110%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves={3} seed={4} result="n" />
-        <feDisplacementMap in="SourceGraphic" in2="n" scale={16} xChannelSelector="R" yChannelSelector="G" result="d" />
-        <feGaussianBlur in="d" stdDeviation={0.7} />
-      </filter>
-      <linearGradient id="gNight" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#15162A" />
-        <stop offset="0.6" stopColor="#2B2D42" />
-        <stop offset="1" stopColor="#4A4E69" />
-      </linearGradient>
-      <linearGradient id="gDawn" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#F3B98A" />
-        <stop offset="0.55" stopColor="#FBE3B8" />
-        <stop offset="1" stopColor="#FEFAE0" />
-      </linearGradient>
-      <linearGradient id="gWinter" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#8FB0C8" />
-        <stop offset="0.6" stopColor="#CFE3F0" />
-        <stop offset="1" stopColor="#F4F9FF" />
-      </linearGradient>
-      <linearGradient id="gSunset" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#E76F51" />
-        <stop offset="0.5" stopColor="#FFB703" />
-        <stop offset="1" stopColor="#FEFAE0" />
-      </linearGradient>
-      <linearGradient id="gMud" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#BC6C25" />
-        <stop offset="1" stopColor="#7A4412" />
-      </linearGradient>
-      <linearGradient id="gSoil" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#C58B4A" />
-        <stop offset="1" stopColor="#8B5A2B" />
-      </linearGradient>
-      <linearGradient id="gSnowG" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#F4F9FF" />
-        <stop offset="1" stopColor="#BBD3E6" />
-      </linearGradient>
-      <linearGradient id="gBeam" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#FFD166" stopOpacity="0.75" />
-        <stop offset="1" stopColor="#FFD166" stopOpacity="0" />
-      </linearGradient>
-      <linearGradient id="gRoll" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0" stopColor="#C9A66B" />
-        <stop offset="0.45" stopColor="#FEFAE0" />
-        <stop offset="1" stopColor="#B88C52" />
-      </linearGradient>
-      <radialGradient id="gParch">
-        <stop offset="0" stopColor="#FEFAE0" />
-        <stop offset="0.7" stopColor="#F2DDA8" />
-        <stop offset="1" stopColor="#DDA15E" />
-      </radialGradient>
-      <radialGradient id="gGlowY">
-        <stop offset="0" stopColor="#FFFBE0" stopOpacity="0.95" />
-        <stop offset="0.35" stopColor="#FFD166" stopOpacity="0.6" />
-        <stop offset="1" stopColor="#FFD166" stopOpacity="0" />
-      </radialGradient>
-      <radialGradient id="gGlowG">
-        <stop offset="0" stopColor="#E8FFF1" stopOpacity="0.95" />
-        <stop offset="0.4" stopColor="#74C69D" stopOpacity="0.55" />
-        <stop offset="1" stopColor="#74C69D" stopOpacity="0" />
-      </radialGradient>
-      <radialGradient id="gGlowGold">
-        <stop offset="0" stopColor="#FFF3B0" stopOpacity="0.9" />
-        <stop offset="0.4" stopColor="#FFB703" stopOpacity="0.5" />
-        <stop offset="1" stopColor="#FFB703" stopOpacity="0" />
-      </radialGradient>
-    </defs>
+const Layer: React.FC<{ children: React.ReactNode; style?: React.CSSProperties }> = ({ children, style }) => (
+  <svg
+    viewBox={`0 0 ${W} ${H}`}
+    width={W}
+    height={H}
+    style={{ position: "absolute", left: 0, top: 0, overflow: "visible", ...style }}
+  >
+    {children}
   </svg>
 );
 
-/* ===================================================================== */
-/*  ESCENARIOS & ELEMENTOS VISUALES                                       */
-/* ===================================================================== */
-const Skyline: React.FC<{ seed: string; base: number; hMin: number; hMax: number; fill: string; lit?: boolean }> = ({
-  seed,
-  base,
-  hMin,
-  hMax,
-  fill,
-  lit = false,
-}) => {
-  const blds = useMemo(() => {
-    const out: { x: number; w: number; h: number; tilt: number }[] = [];
-    let x = -60;
-    let i = 0;
-    while (x < W + 60) {
-      const w = 140 * (0.7 + random(`${seed}w${i}`) * 0.7);
-      const h = hMin + random(`${seed}h${i}`) * (hMax - hMin);
-      out.push({ x, w, h, tilt: (random(`${seed}t${i}`) - 0.5) * 16 });
-      x += w + 8;
-      i++;
-    }
-    return out;
-  }, [seed, base, hMin, hMax]);
-
-  return (
-    <g>
-      {blds.map((b, i) => (
-        <Shape
-          key={i}
-          d={`M ${b.x} ${base} L ${b.x} ${base - b.h + b.tilt} L ${b.x + b.w} ${base - b.h - b.tilt} L ${b.x + b.w} ${base} Z`}
-          fill={fill}
-          w={3.5}
-          seed={i}
-        />
-      ))}
-    </g>
-  );
-};
-
-const Castle: React.FC<{ x: number; y: number; s?: number; wall: string; roof: string; snow?: boolean }> = ({
-  x,
-  y,
-  s = 1,
-  wall,
-  roof,
-  snow = false,
-}) => (
-  <g transform={`translate(${x} ${y}) scale(${s})`}>
-    <Shape d="M -120 0 L -120 -140 L 120 -140 L 120 0 Z" fill={wall} w={4} />
-    <Shape d="M -160 0 L -160 -240 L -90 -240 L -90 0 Z" fill={wall} w={4} />
-    <Shape d="M -170 -240 L -125 -330 L -80 -240 Z" fill={roof} w={4} />
-    <Shape d="M 90 0 L 90 -210 L 160 -210 L 160 0 Z" fill={wall} w={4} />
-    <Shape d="M 80 -210 L 125 -300 L 170 -210 Z" fill={roof} w={4} />
-    <Shape d="M -40 -140 L -40 -280 L 40 -280 L 40 -140 Z" fill={wall} w={4} />
-    <Shape d="M -50 -280 L 0 -380 L 50 -280 Z" fill={roof} w={4} />
-    <path d="M -20 0 L -20 -50 Q 0 -80 20 -50 L 20 0 Z" fill="#2A1A10" stroke={C.ink} strokeWidth={3} />
-  </g>
-);
-
-const HILL_FAR =
-  "M -800 1250 C -500 1110, -200 1190, 100 1130 C 400 1070, 600 1190, 900 1140 C 1200 1090, 1500 1200, 1900 1160 L 1900 1700 L -800 1700 Z";
-const HILL_NEAR =
-  "M -800 1420 C -400 1330, 0 1400, 300 1370 C 600 1340, 800 1430, 1100 1390 C 1400 1350, 1600 1420, 1900 1400 L 1900 1800 L -800 1800 Z";
-const GROUND_D =
-  "M -800 1580 C -300 1550, 200 1600, 700 1570 C 1100 1545, 1500 1590, 1900 1570 L 1900 2000 L -800 2000 Z";
-
-const Backdrop: React.FC<{ tone: "dawn" | "winter" | "sunset"; shift?: number; lf: number }> = ({ tone, shift = 0, lf }) => {
-  const winter = tone === "winter";
-  const sunset = tone === "sunset";
-  const skyFill = tone === "dawn" ? "url(#gDawn)" : winter ? "url(#gWinter)" : "url(#gSunset)";
-  const far = winter ? "#BFD3E3" : sunset ? "#C58A4B" : "#93A872";
-  const near = winter ? "#E4EFF8" : sunset ? "#8A6232" : C.forest;
-  const gnd = winter ? "url(#gSnowG)" : "url(#gMud)";
-  return (
-    <g>
-      <g transform={`translate(${shift * 0.08} 0)`}>
-        <Wash d={SKY_D} fill={skyFill} />
-        <path
-          d={blob(sunset ? 540 : 800, sunset ? 640 : 380, sunset ? 190 : 120, sunset ? 190 : 120, `sun${tone}`, 10, 0.03)}
-          fill={winter ? "#F8FBFF" : sunset ? C.barley : "#FFE8A3"}
-          opacity={0.9}
-          filter="url(#wc)"
-        />
-      </g>
-      <g transform={`translate(${shift * 0.3} 0)`} opacity={0.92}>
-        <Castle x={330} y={1260} s={0.8} wall={winter ? "#B7CFE0" : "#9AA5B1"} roof={winter ? C.snow : "#7C8BA0"} snow={winter} />
-        <Castle x={880} y={1300} s={0.5} wall={winter ? "#C4D8E8" : "#A5AFBA"} roof={winter ? C.snow : "#8794A8"} snow={winter} />
-      </g>
-      <g transform={`translate(${shift * 0.6} 0)`}>
-        <Wash d={HILL_FAR} fill={far} />
-        <Wash d={HILL_NEAR} fill={near} />
-      </g>
-      <g transform={`translate(${shift} 0)`}>
-        <Wash d={GROUND_D} fill={gnd} />
-      </g>
-    </g>
-  );
-};
-
-/* ===================================================================== */
-/*  LOS 4 CULTIVOS NORFOLK                                               */
-/* ===================================================================== */
-const WheatCrop: React.FC<{ s?: number; pop?: number }> = ({ s = 1, pop = 1 }) => (
-  <g transform={`scale(${s * pop})`}>
-    <Tube d="M 0 0 C -12 -60, -8 -130, -22 -200" w={7} fill={C.gold} />
-    <Tube d="M 0 0 C 10 -70, 16 -140, 24 -190" w={7} fill={C.gold} />
-    {[-180, -150, -120, -90, -60].map((yy, i) => (
-      <g key={i}>
-        <Shape d={blob(-28, yy, 12, 8, `wgL${i}`, 6, 0.1)} fill={C.gold} w={2.5} />
-        <Shape d={blob(28, yy + 10, 12, 8, `wgR${i}`, 6, 0.1)} fill={C.gold} w={2.5} />
-      </g>
-    ))}
-    <Coin x={-35} y={-230} r={18} s={pop} seed={1} />
-    <Coin x={35} y={-210} r={16} s={pop} seed={2} />
-  </g>
-);
-
-const TurnipCrop: React.FC<{ s?: number; pop?: number }> = ({ s = 1, pop = 1 }) => (
-  <g transform={`scale(${s * pop})`}>
-    <Shape d={blob(0, -60, 68, 62, "turnipB", 8, 0.08)} fill={C.turnip} w={4.5} />
-    <path d={blob(0, -32, 54, 30, "turnipW", 7, 0.1)} fill="#FFFFFF" opacity={0.88} />
-    <Tube d="M -16 -115 C -36 -170, -60 -210, -90 -230" w={11} fill={C.clover} />
-    <Tube d="M 0 -120 C 0 -180, 4 -220, 6 -260" w={12} fill={C.clover} />
-    <Tube d="M 16 -115 C 36 -170, 60 -210, 90 -230" w={11} fill={C.clover} />
-    <Tube d="M 0 0 Q -8 34 -4 60 M 0 0 Q 10 30 16 56" w={5} fill="#DDA15E" />
-  </g>
-);
-
-const BarleyCrop: React.FC<{ s?: number; pop?: number }> = ({ s = 1, pop = 1 }) => (
-  <g transform={`scale(${s * pop})`}>
-    <Tube d="M 0 0 C -6 -60, -14 -120, -18 -180" w={6} fill={C.barley} />
-    <Tube d="M 0 0 C 8 -70, 12 -130, 20 -190" w={6} fill={C.barley} />
-    {[-160, -130, -100, -70].map((yy, i) => (
-      <g key={i}>
-        <path d={`M -18 ${yy} L ${-38 - i * 4} ${yy - 24}`} stroke={C.barley} strokeWidth={3} strokeLinecap="round" />
-        <path d={`M 20 ${yy + 12} L ${40 + i * 4} ${yy - 12}`} stroke={C.barley} strokeWidth={3} strokeLinecap="round" />
-      </g>
-    ))}
-    {/* Jarra de cerveza espumosa */}
-    <g transform="translate(42 -140) scale(0.65)">
-      <Shape d="M -24 -36 L 24 -36 L 18 36 L -18 36 Z" fill={C.barley} w={3.5} />
-      <Shape d={cloud(0, -42, 28, 14, "foam", 8)} fill="#FFFFFF" w={3} />
-      <path d="M 22 -18 Q 42 -18 40 12 Q 38 24 18 24" stroke={C.ink} strokeWidth={3.5} fill="none" strokeLinecap="round" />
-    </g>
-  </g>
-);
-
-const CloverCrop: React.FC<{ s?: number; pop?: number; pulse?: number }> = ({ s = 1, pop = 1, pulse = 1 }) => (
-  <g transform={`scale(${s * pop})`}>
-    {/* Hojas aéreas del trébol */}
-    {[0, 90, 180, 270].map((ang, i) => (
-      <g key={i} transform={`translate(0 -90) rotate(${ang})`}>
-        <path d="M 0 0 C -22 -32, -34 -10, 0 8 C 34 -10, 22 -32, 0 0 Z" fill={C.clover} stroke={C.ink} strokeWidth={2.5} />
-      </g>
-    ))}
-    <Tube d="M 0 0 L 0 -90" w={6} fill={C.forest} />
-
-    {/* Raíces subterráneas con nódulos bio-luminosos */}
-    <Tube d="M 0 0 C -18 40, -40 80, -60 130" w={5} fill="#C58A4B" />
-    <Tube d="M 0 0 C 14 44, 30 90, 52 140" w={5} fill="#C58A4B" />
-    <Tube d="M 0 0 L 0 110" w={4} fill="#C58A4B" />
-
-    {/* Nódulos que inyectan luz esmeralda */}
-    {[
-      [-36, 68],
-      [-54, 116],
-      [24, 60],
-      [44, 110],
-      [-6, 85],
-    ].map(([nx, ny], i) => (
-      <g key={i} transform={`translate(${nx} ${ny}) scale(${pulse})`}>
-        <circle cx={0} cy={0} r={16} fill="url(#gGlowG)" opacity={0.85} />
-        <circle cx={0} cy={0} r={6} fill={C.aura} stroke={C.ink} strokeWidth={1.5} />
-      </g>
-    ))}
-  </g>
-);
-
-/* ===================================================================== */
-/*  PERSONAJES SECUNDARIOS (FARMER, NOBLE, DRAGON)                        */
-/* ===================================================================== */
-const Farmer: React.FC<{ x: number; y: number; s?: number; blink: number }> = ({ x, y, s = 1, blink }) => (
-  <g transform={`translate(${x} ${y}) scale(${s})`}>
-    <path d={blob(0, 8, 110, 14, "fsh", 8, 0.1)} fill="#000" opacity={0.14} />
-    <Tube d="M -20 -200 L -24 -10 M 20 -200 L 24 -10" w={16} fill="#E3C9A8" />
-    <Shape d="M -46 -220 C -52 -340, 52 -340, 46 -220 Z" fill="#9A7B4F" w={4} />
-    <Tube d="M -8 -480 L -8 10" w={8} fill={C.wood} />
-    {[-30, -8, 14].map((px, i) => (
-      <Tube key={i} d={`M ${px} -550 L ${px} -480`} w={6} fill="#8D99AE" />
-    ))}
-    <g transform="translate(0 -400)">
-      <Shape d={blob(0, 0, 42, 48, "fh", 8, 0.05)} fill="#E3C9A8" w={3.5} />
-      <Shape d={blob(0, -44, 76, 18, "fhat", 8, 0.06)} fill="#E9C46A" w={3.5} />
-      <Eye uid="fm-eL" x={-16} y={-6} rx={9} ry={11} blink={blink} lid={0.4} skin="#E3C9A8" outerLeft w={2} />
-      <Eye uid="fm-eR" x={16} y={-6} rx={9} ry={11} blink={blink} lid={0.4} skin="#E3C9A8" w={2} />
-      <path d="M -14 34 Q 0 24 14 34" stroke={C.ink} strokeWidth={3} fill="none" strokeLinecap="round" />
-    </g>
-  </g>
-);
-
-const Noble: React.FC<{ x: number; y: number; s?: number; k: number; lf: number; blink: number }> = ({
-  x,
-  y,
-  s = 1,
-  k,
-  lf,
-  blink,
-}) => {
-  const shiver = Math.sin(lf * 1.6 + k) * 2.5;
-  return (
-    <g transform={`translate(${x + shiver} ${y}) scale(${s})`}>
-      <Shape d="M -50 -60 C -60 -180, 60 -180, 50 -60 Z" fill={k % 2 === 0 ? "#6A040F" : "#1D3557"} w={4} />
-      <Shape d={cloud(0, -180, 42, 16, `nfur${k}`, 8)} fill={C.wool} w={3.5} />
-      <g transform="translate(0 -220)">
-        <Shape d={blob(0, 0, 32, 36, `nh${k}`, 8, 0.05)} fill="#E3EDF5" w={3.5} />
-        <path d={blob(0, 8, 7, 6, `nnose${k}`, 6, 0.1)} fill="#EF233C" />
-        <Shape d="M -24 -28 L -24 -56 L -12 -42 L 0 -62 L 12 -42 L 24 -56 L 24 -28 Z" fill={C.gold} w={3} />
-        <Eye uid={`nb-eL${k}`} x={-12} y={-6} rx={7} ry={8} blink={blink} skin="#E3EDF5" w={1.8} />
-        <Eye uid={`nb-eR${k}`} x={12} y={-6} rx={7} ry={8} blink={blink} skin="#E3EDF5" w={1.8} />
-      </g>
-      {/* Bolsa de oro en manos temblorosas */}
-      <g transform="translate(0 -110)">
-        <Shape d={blob(0, 0, 24, 28, `bag${k}`, 8, 0.08)} fill={C.parch} w={3} />
-        <Coin x={0} y={-8} r={12} seed={k} />
-      </g>
-    </g>
-  );
-};
-
-const Dragon: React.FC<{ x: number; y: number; s?: number; blink: number }> = ({ x, y, s = 1, blink }) => {
-  const { gf } = useClock();
-  const flap = Math.sin((gf / 18) * TAU);
-  const fan = Math.sin((gf / 40) * TAU) * 22;
-  return (
-    <g transform={`translate(${x} ${y}) scale(${s})`}>
-      <Shape d={blob(0, 0, 64, 76, "dbody", 8, 0.05)} fill={C.aura} w={4} />
-      <path d={blob(10, 10, 36, 50, "dbelly", 7, 0.05)} fill="#E8F5D8" />
-      {/* Abanico con hoja gigante de nabo */}
-      <g transform={`translate(52 -50) rotate(${fan})`}>
-        <Tube d="M 0 0 L 26 -28" w={6} fill={C.wood} />
-        <Shape d="M 26 -28 C 60 -100, 160 -120, 220 -60 C 180 -10, 80 10, 26 -28 Z" fill={C.clover} w={4} />
-      </g>
-      <g transform="translate(38 -80)">
-        <Shape d={blob(0, 0, 42, 38, "dh", 8, 0.05)} fill={C.aura} w={4} />
-        <Shape d={blob(28, 10, 24, 18, "dsn", 7, 0.06)} fill={C.aura} w={3.5} />
-        <Eye uid="dr-eye" x={0} y={-4} rx={11} ry={13} blink={blink} skin={C.aura} iris={C.gold} w={2.5} />
-      </g>
-    </g>
-  );
-};
-
-/* ===================================================================== */
-/*  ESCENA 1: EL GANCHO ISEKAI (00:00 - 00:07 | Frames 0 - 420)           */
-/* ===================================================================== */
-const Scene1IsekaiHook: React.FC<{ localFrame: number; blink: number }> = ({ localFrame, blink }) => {
-  const lf = localFrame;
-  const isNight = lf < 140;
-
-  // Faros de Camión-Kun (frames 50-130)
-  const truckBeam = rng(lf, [50, 110, 140], [0, 1, 0]);
-  const truckX = rng(lf, [50, 130], [W + 400, W - 150]);
-
-  // Transición de rasgado de papel (frames 110-180)
-  const tearProg = rng(lf, [110, 170], [0, 1]);
-
-  // Impacto en lodo (frames 140-200)
-  const heroSquash = squash(lf, 160, 130);
-  const mudSplash = rng(lf, [155, 175, 230], [0, 1, 0]);
-
-  // Ventana RPG (frames 220-420)
-  const rpgPop = sp(lf, 220);
-
-  return (
-    <g>
-      {/* 1. Fondo Mundo Moderno */}
-      {isNight && (
-        <g opacity={1 - tearProg}>
-          <Wash d={FULL} fill="url(#gNight)" />
-          <Skyline seed="city1" base={1300} hMin={400} hMax={800} fill={C.asphalt} lit />
-          <path d={`M -50 1300 L ${W + 50} 1300 L ${W + 50} 1950 L -50 1950 Z`} fill="#1E202E" />
-          {/* Postes y cruce de calle */}
-          <path d="M 220 1300 L 220 700" stroke="#4A4E69" strokeWidth={12} strokeLinecap="round" />
-          <path d="M 200 710 L 280 710" stroke={C.beam} strokeWidth={8} strokeLinecap="round" />
-        </g>
-      )}
-
-      {/* 2. Fondo Mundo Medieval (aparece detrás del rasgado) */}
-      <g opacity={tearProg}>
-        <Backdrop tone="dawn" lf={lf} />
-      </g>
-
-      {/* 3. Luces Camión-Kun */}
-      {truckBeam > 0.01 && (
-        <g opacity={truckBeam}>
-          <polygon points={`${truckX},800 -200,400 -200,1600`} fill="url(#gBeam)" />
-          <polygon points={`${truckX},950 -200,700 -200,1800`} fill="url(#gBeam)" />
-          <circle cx={truckX} cy={850} r={90} fill={C.headlight} filter="url(#wc)" />
-          <circle cx={truckX} cy={970} r={90} fill={C.headlight} filter="url(#wc)" />
-        </g>
-      )}
-
-      {/* 4. Protagonista */}
-      {lf < 140 ? (
-        <Hero
-          uid="sc1-hero-night"
-          x={540}
-          y={1500}
-          scale={1.3}
-          blink={blink}
-          tired={1}
-          top="hoodie"
-          pack={0}
-          surprise={truckBeam}
-          open={truckBeam > 0.5 ? 0.8 : 0}
-        />
-      ) : (
-        <g>
-          {/* Splash de lodo */}
-          {mudSplash > 0.05 && (
-            <g transform="translate(540 1620) scale(1.6)" opacity={mudSplash}>
-              <path d={blob(0, 0, 160, 50, "splash", 9, 0.3)} fill={C.mud} />
-              <path d={blob(-120, -60, 40, 30, "spL", 7, 0.2)} fill={C.mud} />
-              <path d={blob(120, -50, 44, 34, "spR", 7, 0.2)} fill={C.mud} />
-            </g>
-          )}
-          <Hero
-            uid="sc1-hero-isekai"
-            x={540}
-            y={1640}
-            scale={1.3}
-            rot={-42}
-            sx={heroSquash.sx}
-            sy={heroSquash.sy}
-            blink={blink}
-            mud={1}
-            top="hoodie"
-            pack={rng(lf, [180, 240], [0, 1])}
-            brow={1}
-            open={0.6}
-          />
-        </g>
-      )}
-
-      {/* 5. Ventana RPG Status flotante dibujada a mano */}
-      {rpgPop > 0.01 && (
-        <g transform={`translate(540 820) scale(${rpgPop})`}>
-          <Shape d={blob(0, 0, 420, 180, "rpgbox", 10, 0.03)} fill={C.paper} w={5} stroke={C.ink} />
-          <path d="M -390 -90 L 390 -90" stroke={C.mud} strokeWidth={4} strokeLinecap="round" />
-          <text
-            x={0}
-            y={-110}
-            textAnchor="middle"
-            fill={C.ink}
-            style={{ fontFamily: HAND, fontSize: 44, fontWeight: "bold" }}
-          >
-            ⚡ ESTADO DE REENCARNACIÓN ⚡
-          </text>
-          <text
-            x={0}
-            y={-20}
-            textAnchor="middle"
-            fill={C.headlight}
-            style={{ fontFamily: HAND, fontSize: 48, fontWeight: "bold" }}
-          >
-            MAGIA: 0 | FUERZA: 2
-          </text>
-          <text
-            x={0}
-            y={60}
-            textAnchor="middle"
-            fill={C.forest}
-            style={{ fontFamily: HAND, fontSize: 56, fontWeight: "bold" }}
-          >
-            CLASE: CAMPESINO
-          </text>
-        </g>
-      )}
-    </g>
-  );
-};
-
-/* ===================================================================== */
-/*  ESCENA 2: LA INEFICIENCIA MEDIEVAL (00:07 - 00:18 | Frames 420-1080)  */
-/* ===================================================================== */
-const Scene2MedievalInefficiency: React.FC<{ localFrame: number; blink: number }> = ({ localFrame, blink }) => {
-  const lf = localFrame;
-  const panX = rng(lf, [0, 400], [0, -180]);
-
-  // Borrado con goma gigante (frames 360-600)
-  const eraseProg = rng(lf, [360, 520], [0, 1]);
-  const handY = rng(lf, [340, 390, 520, 600], [-300, 700, 750, -300]);
-  const handX = rng(lf, [360, 520], [680, 520]);
-
-  return (
-    <g>
-      <Backdrop tone="sunset" shift={panX} lf={lf} />
-
-      {/* Campesino medieval con horca */}
-      <Farmer x={260 + panX} y={1580} s={1.1} blink={blink} />
-
-      {/* Parcela 1: Trigo raquítico y amarillo */}
-      <g transform={`translate(${480 + panX} 1600)`}>
-        <path d={blob(0, 0, 140, 50, "p1soil", 8, 0.08)} fill={C.mud} />
-        <text x={0} y={-140} textAnchor="middle" fill={C.gold} style={{ fontFamily: HAND, fontSize: 38, fontWeight: "bold" }}>
-          Parcela A (Trigo Triste)
-        </text>
-        <WheatCrop s={0.65} pop={0.8} />
-      </g>
-
-      {/* Parcela 2: Tierra vacía descansando */}
-      <g transform={`translate(${840 + panX} 1600)`}>
-        {eraseProg < 0.95 && (
-          <g opacity={1 - eraseProg}>
-            <path d={blob(0, 0, 160, 56, "p2dry", 8, 0.08)} fill="#7A7870" />
-            {/* Grietas secas */}
-            <path d="M -80 -10 L 0 10 L 70 -16 M -20 -24 L 20 20" stroke="#4A4944" strokeWidth={3} fill="none" />
-            {/* Caritas chibi exhaustas */}
-            {[-60, 0, 60].map((cx, i) => (
-              <text key={i} x={cx} y={-30} fill="#D3D0C7" style={{ fontFamily: HAND, fontSize: 32 }}>
-                x_x Zzz
-              </text>
-            ))}
-            {/* Cartel de madera */}
-            <g transform="translate(0 -160)">
-              <Tube d="M 0 0 L 0 120" w={8} fill={C.woodDark} />
-              <Shape d={blob(0, 0, 160, 60, "sign", 7, 0.06)} fill={C.wood} w={4} />
-              <text x={0} y={-6} textAnchor="middle" fill={C.paper} style={{ fontFamily: HAND, fontSize: 32, fontWeight: "bold" }}>
-                DESCANSANDO
-              </text>
-              <text x={0} y={26} textAnchor="middle" fill="#FFCDB2" style={{ fontFamily: HAND, fontSize: 26 }}>
-                (No tocar por 1 año)
-              </text>
-            </g>
-          </g>
-        )}
-
-        {/* Al borrar: brotes verdes nuevos */}
-        {eraseProg > 0.3 && (
-          <g opacity={eraseProg}>
-            <path d={blob(0, 0, 170, 60, "p2fresh", 8, 0.08)} fill={C.clover} />
-            <CloverCrop s={0.7} pop={eraseProg} />
-          </g>
-        )}
-      </g>
-
-      {/* Virutas de goma de borrar cayendo */}
-      {eraseProg > 0.1 && eraseProg < 0.95 && (
-        <Drift lf={lf} n={18} seed="eraser" kind="shaving" x0={500} x1={900} y0={600} y1={1600} speed={4} />
-      )}
-
-      {/* Mano ilustrada gigante con goma de borrar */}
-      {handY > -200 && (
-        <g transform={`translate(${handX} ${handY}) rotate(-25)`}>
-          {/* Brazo boceto */}
-          <Shape d="M -80 -600 L -50 0 L 50 0 L 80 -600 Z" fill={C.skin} w={6} />
-          {/* Mano */}
-          <Shape d={blob(0, 40, 90, 70, "bighand", 8, 0.08)} fill={C.skin} w={6} />
-          {/* Goma de borrar blanca */}
-          <Shape d="M -70 80 L 70 80 L 50 160 L -50 160 Z" fill="#FFFFFF" w={5} />
-          <path d="M -70 80 L 70 80" stroke={C.ink} strokeWidth={4} />
-          <text x={0} y={130} textAnchor="middle" fill="#888" style={{ fontFamily: HAND, fontSize: 28, fontWeight: "bold" }}>
-            ERASER
-          </text>
-        </g>
-      )}
-    </g>
-  );
-};
-
-/* ===================================================================== */
-/*  ESCENA 3: EL SECRETO NORFOLK (00:18 - 00:36 | Frames 1080-2160)       */
-/* ===================================================================== */
-const Scene3NorfolkFourFields: React.FC<{ localFrame: number }> = ({ localFrame }) => {
-  const lf = localFrame;
-
-  // Apertura del pergamino (frames 0-120)
-  const mapPop = sp(lf, 0);
-
-  // Brote secuencial de los 4 cultivos
-  const popWheat = sp(lf, 120);
-  const popBarley = sp(lf, 220);
-  const popTurnip = sp(lf, 320);
-  const popClover = sp(lf, 420);
-
-  // Pulso bio-luminoso en raíces
-  const pulse = 1 + 0.18 * Math.sin((lf / 20) * TAU);
-
-  // Carrusel rotación orbital (frames 600-1080)
-  const orbitAngle = rng(lf, [600, 1020], [0, 360], EIO);
-
-  return (
-    <g>
-      <Wash d={FULL} fill="#545B38" />
-
-      {/* Pergamino / cuaderno de apuntes */}
-      <g transform={`translate(540 960) scale(${mapPop})`}>
-        <Shape d={blob(0, 0, 480, 720, "parchmap", 10, 0.04)} fill={C.paper} w={6} stroke={C.mud} />
-        <path d="M -440 -640 L 440 -640" stroke={C.woodDark} strokeWidth={4} strokeLinecap="round" />
-        <text
-          x={0}
-          y={-660}
-          textAnchor="middle"
-          fill={C.ink}
-          style={{ fontFamily: HAND, fontSize: 48, fontWeight: "bold" }}
-        >
-          📜 PLAN AGRÍCOLA NORFOLK (ROTACIÓN DE 4 CAMPOS)
-        </text>
-
-        {/* Grupo orbital de las 4 parcelas cuadradas */}
-        <g transform={`rotate(${orbitAngle})`}>
-          {/* Cuadrícula divisoria */}
-          <path d="M -380 0 L 380 0 M 0 -540 L 0 540" stroke={C.ink} strokeWidth={5} strokeDasharray="12 8" />
-
-          {/* Campo 1 (NO): TRIGO */}
-          <g transform="translate(-190 -270)">
-            <Shape d={blob(0, 0, 160, 200, "f1", 8, 0.06)} fill="#FFF3CD" w={4} />
-            <text x={0} y={-140} textAnchor="middle" fill={C.gold} style={{ fontFamily: HAND, fontSize: 36, fontWeight: "bold" }}>
-              1. TRIGO (Venta)
-            </text>
-            <WheatCrop s={0.8} pop={popWheat} />
-          </g>
-
-          {/* Campo 2 (NE): CEBADA */}
-          <g transform="translate(190 -270)">
-            <Shape d={blob(0, 0, 160, 200, "f2", 8, 0.06)} fill="#FFE5D9" w={4} />
-            <text x={0} y={-140} textAnchor="middle" fill={C.barley} style={{ fontFamily: HAND, fontSize: 36, fontWeight: "bold" }}>
-              2. CEBADA (Cerveza)
-            </text>
-            <BarleyCrop s={0.8} pop={popBarley} />
-          </g>
-
-          {/* Campo 3 (SO): NABOS */}
-          <g transform="translate(-190 270)">
-            <Shape d={blob(0, 0, 160, 200, "f3", 8, 0.06)} fill="#F3E8FF" w={4} />
-            <text x={0} y={-140} textAnchor="middle" fill={C.turnip} style={{ fontFamily: HAND, fontSize: 36, fontWeight: "bold" }}>
-              3. NABOS (Limpia)
-            </text>
-            <TurnipCrop s={0.85} pop={popTurnip} />
-          </g>
-
-          {/* Campo 4 (SE): TRÉBOLES (RECARGA NITROGENO) */}
-          <g transform="translate(190 270)">
-            <Shape d={blob(0, 0, 160, 200, "f4", 8, 0.06)} fill="#D8F3DC" w={4} />
-            <text x={0} y={-140} textAnchor="middle" fill={C.clover} style={{ fontFamily: HAND, fontSize: 36, fontWeight: "bold" }}>
-              4. TRÉBOL (Recarga)
-            </text>
-            <CloverCrop s={0.9} pop={popClover} pulse={pulse} />
-          </g>
-        </g>
-      </g>
-    </g>
-  );
-};
-
-/* ===================================================================== */
-/*  ESCENA 4: EL COMBO GANADERO & INVIERNO (00:36 - 00:50 | 2160-3000)   */
-/* ===================================================================== */
-const Scene4LivestockWinterBoom: React.FC<{ localFrame: number; blink: number }> = ({ localFrame, blink }) => {
-  const lf = localFrame;
-
-  // Entrada de ovejas y vacas felices (frames 0-380)
-  const animIn = sp(lf, 0);
-  const inflate = rng(lf, [80, 240], [0, 1]);
-
-  // Transición a invierno (frames 360-600)
-  const winterProg = rng(lf, [360, 480], [0, 1]);
-
-  // Fila de nobles tiritando con bolsas de oro (frames 440-840)
-  const noblesIn = sp(lf, 440);
-
-  // Moneda dorada girando hacia cámara (frames 720-840)
-  const coinPop = rng(lf, [720, 840], [0, 1]);
-  const coinScale = rng(lf, [720, 840], [0.2, 12]);
-  const coinRot = rng(lf, [720, 840], [0, 720]);
-
-  return (
-    <g>
-      <Backdrop tone={winterProg > 0.5 ? "winter" : "dawn"} lf={lf} />
-
-      {/* Granero lleno */}
-      <g transform="translate(240 1480)">
-        <Shape d="M -160 0 L -160 -200 L 0 -280 L 160 -200 L 160 0 Z" fill="#9C3D2E" w={5} />
-        <Shape d="M -80 0 L -80 -140 L 80 -140 L 80 0 Z" fill="#E9C46A" w={4} />
-        <text x={0} y={-160} textAnchor="middle" fill={C.paper} style={{ fontFamily: HAND, fontSize: 32, fontWeight: "bold" }}>
-          GRANERO LLENO
-        </text>
-      </g>
-
-      {/* Ganado esponjoso (Oveja + Vaca) comiendo nabos y tréboles */}
-      <g transform={`translate(540 1620) scale(${animIn})`}>
-        {/* Oveja esponjosa */}
-        <g transform="translate(-160 -40) scale(1.15)">
-          <Shape d={cloud(0, -60, 110, 75, "sheepb", 12)} fill={C.wool} w={4.5} />
-          <Shape d={blob(70, -40, 36, 42, "sheeph", 8, 0.05)} fill="#6B6F8A" w={3.5} />
-          <Eye uid="sh-e" x={70} y={-45} rx={8} ry={9} blink={blink} skin="#6B6F8A" w={2} />
-          {/* Masticando trébol */}
-          <path d="M 90 -25 Q 110 -35 125 -20" stroke={C.clover} strokeWidth={6} fill="none" strokeLinecap="round" />
-        </g>
-
-        {/* Vaca feliz */}
-        <g transform="translate(180 0) scale(1.1)">
-          <Shape d={blob(0, -80, 140, 85, "cowb", 10, 0.05)} fill={C.wool} w={4.5} />
-          <path d={blob(-40, -100, 50, 40, "cspot", 8, 0.15)} fill="#8A5A2B" />
-          <Shape d={blob(120, -50, 50, 45, "cowh", 8, 0.05)} fill={C.wool} w={4} />
-          <Eye uid="cow-e" x={120} y={-55} rx={9} ry={10} blink={blink} skin={C.wool} w={2} />
-          {/* Masticando nabo */}
-          <path d="M 140 -35 L 165 -25" stroke={C.turnip} strokeWidth={8} strokeLinecap="round" />
-        </g>
-      </g>
-
-      {/* Partículas doradas de fertilidad */}
-      <Drift lf={lf} n={16} seed="abono" kind="sparkle" x0={200} x1={900} y0={1400} y1={1750} speed={2} color={C.gold} />
-
-      {/* Nieve invernal */}
-      {winterProg > 0.1 && (
-        <Drift lf={lf} n={30} seed="snowfall" kind="snow" x0={0} x1={W} y0={0} y1={H} speed={3} />
-      )}
-
-      {/* Fila de nobles tiritando para comprar comida */}
-      {winterProg > 0.4 && (
-        <g transform={`translate(780 1560) scale(${noblesIn})`}>
-          <Noble x={0} y={0} s={0.9} k={1} lf={lf} blink={blink} />
-          <Noble x={140} y={10} s={0.85} k={2} lf={lf} blink={blink} />
-        </g>
-      )}
-
-      {/* Moneda de oro gigante de transición */}
-      {coinPop > 0.01 && (
-        <g transform={`translate(540 960) scale(${coinScale}) rotate(${coinRot})`} opacity={coinPop}>
-          <Coin x={0} y={0} r={50} seed={99} />
-        </g>
-      )}
-    </g>
-  );
-};
-
-/* ===================================================================== */
-/*  ESCENA 5: CONCLUSIÓN Y LOOP PERFECTO (00:50 - 01:00 | 3000-3600)      */
-/* ===================================================================== */
-const Scene5TycoonLoop: React.FC<{ localFrame: number; blink: number }> = ({ localFrame, blink }) => {
-  const lf = localFrame;
-
-  // Protagonista magnate en trono de trigo
-  const heroIn = sp(lf, 0);
-
-  // Enrollado de pergamino final (frames 520-600) para loop perfecto
-  const loopRoll = rng(lf, [530, 600], [0, W + 100]);
-
-  return (
-    <g>
-      {/* Fondo de corte imperial / castillo del estudiante */}
-      <Wash d={FULL} fill="#FFFDF0" />
-      <Backdrop tone="sunset" lf={lf} />
-
-      {/* Trono construido con sacos colosales de trigo */}
-      <g transform={`translate(540 1600) scale(${heroIn})`}>
-        {/* Sacos de trigo apilados */}
-        {[-180, 0, 180].map((bx, i) => (
-          <g key={i} transform={`translate(${bx} 0)`}>
-            <Shape d={blob(0, -60, 110, 80, `sackB${i}`, 8, 0.06)} fill={C.parch} w={5} />
-            <path d="M -60 -40 L 60 -40" stroke={C.woodDark} strokeWidth={6} strokeLinecap="round" />
-            <WheatCrop s={0.5} pop={1} />
-          </g>
-        ))}
-        {[-90, 90].map((bx, i) => (
-          <g key={i} transform={`translate(${bx} -120)`}>
-            <Shape d={blob(0, -60, 100, 75, `sackT${i}`, 8, 0.06)} fill={C.parch} w={5} />
-            <path d="M -50 -40 L 50 -40" stroke={C.woodDark} strokeWidth={6} strokeLinecap="round" />
-          </g>
-        ))}
-
-        {/* Protagonista con capa de comerciante sobre sudadera escolar */}
-        <Hero
-          uid="sc5-tycoon"
-          x={0}
-          y={-140}
-          scale={1.35}
-          blink={blink}
-          top="hoodie"
-          cape={true}
-          smile={1}
-          heldL={
-            /* Jugo en cajita con pajita */
-            <g transform="translate(0 30)">
-              <Shape d="M -16 -24 L 16 -24 L 14 24 L -14 24 Z" fill="#FF5964" w={3} />
-              <Tube d="M 0 -24 L 0 -44 L 12 -54" w={5} fill="#FFFFFF" />
-            </g>
-          }
-        />
-
-        {/* Mini-dragón tierno abanicándole */}
-        <Dragon x={280} y={-240} s={0.9} blink={blink} />
-      </g>
-
-      {/* Corona de laurel y lluvia de monedas */}
-      <Drift lf={lf} n={20} seed="goldrain" kind="sparkle" x0={100} x1={980} y0={100} y1={1700} speed={2.5} />
-
-      {/* ENROLLADO DE PERGAMINO (SEAMLESS LOOP HACIA FRAME 0) */}
-      {loopRoll > 0 && (
-        <g>
-          <clipPath id="loop-clip">
-            <rect x={0} y={0} width={loopRoll} height={H} />
-          </clipPath>
-          <g clipPath="url(#loop-clip)">
-            {/* Reproduce la calle nocturna del Frame 0 */}
-            <Wash d={FULL} fill="url(#gNight)" />
-            <Skyline seed="city1" base={1300} hMin={400} hMax={800} fill={C.asphalt} lit />
-            <Hero uid="sc5-loop-hero" x={540} y={1500} scale={1.3} blink={blink} tired={1} top="hoodie" pack={0} />
-          </g>
-          {/* Borde del cilindro de papel enrollándose */}
-          <rect x={loopRoll - 30} y={0} width={40} height={H} fill="url(#gRoll)" opacity={0.9} />
-        </g>
-      )}
-    </g>
-  );
-};
-
-/* ===================================================================== */
-/*  COMPONENTE PRINCIPAL: WORLD2D                                         */
-/* ===================================================================== */
-interface World2DProps {
-  currentScene: number;
-  sceneLocalFrame: number;
+interface SpriteProps {
+  src: string;
+  frame: number;
+  x: number;
+  y: number;
+  w: number;
+  h?: number;
+  anchor?: "bottom" | "center";
+  origin?: string;
+  rot?: number;
+  sx?: number;
+  sy?: number;
+  opacity?: number;
+  flip?: boolean;
+  seed?: number;
+  blend?: Blend;
+  filter?: string;
+  boil?: number;
 }
 
-export const World2D: React.FC<World2DProps> = ({ currentScene, sceneLocalFrame }) => {
+/** Sprite ilustrado con multiply sobre papel, line-boil y squash & stretch. */
+const Sprite: React.FC<SpriteProps> = ({
+  src, frame, x, y, w, h, anchor = "bottom", origin, rot = 0, sx = 1, sy = 1,
+  opacity = 1, flip = false, seed = 0, blend = "multiply", filter, boil = 1.4,
+}) => {
+  const hh = h ?? w;
+  const b = lineBoil(frame, seed, boil);
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: x - w / 2,
+        top: anchor === "bottom" ? y - hh : y - hh / 2,
+        width: w,
+        height: hh,
+        opacity,
+        mixBlendMode: blend,
+        filter,
+        transformOrigin: origin ?? (anchor === "bottom" ? "50% 100%" : "50% 50%"),
+        transform: `translate(${b.x}px, ${b.y}px) rotate(${rot + b.r}deg) scale(${flip ? -sx : sx}, ${sy})`,
+      }}
+    >
+      <Img src={src} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+    </div>
+  );
+};
+
+/** Partícula teñida: usa el PNG blanco como máscara y lo colorea. */
+const Glow: React.FC<{
+  src: string; x: number; y: number; size: number; color: string;
+  opacity?: number; rot?: number; blend?: Blend;
+}> = ({ src, x, y, size, color, opacity = 1, rot = 0, blend = "normal" }) => {
+  if (opacity <= 0.003 || size <= 0.5) return null;
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: x - size / 2,
+        top: y - size / 2,
+        width: size,
+        height: size,
+        backgroundColor: color,
+        WebkitMaskImage: `url(${src})`,
+        maskImage: `url(${src})`,
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+        opacity,
+        mixBlendMode: blend,
+        transform: `rotate(${rot}deg)`,
+      }}
+    />
+  );
+};
+
+/** Texto caligráfico con halo de papel y boil. */
+const Ink: React.FC<{
+  text: string; x: number; y: number; size: number; frame: number;
+  color?: string; halo?: string; rot?: number; opacity?: number; seed?: number;
+  serif?: boolean; weight?: number; scale?: number;
+}> = ({
+  text, x, y, size, frame, color = C.ink, halo = C.paper, rot = 0, opacity = 1,
+  seed = 0, serif = false, weight = 700, scale = 1,
+}) => {
+  if (opacity <= 0.003 || scale <= 0.001) return null;
+  const b = lineBoil(frame, seed, 1.6);
+  const hs = `2px 2px 0 ${halo}, -2px -2px 0 ${halo}, 2px -2px 0 ${halo}, -2px 2px 0 ${halo}, 0 4px 0 ${halo}`;
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: x,
+        top: y,
+        whiteSpace: "nowrap",
+        fontFamily: serif ? SERIF : HAND,
+        fontSize: size,
+        fontWeight: weight,
+        color,
+        opacity,
+        textShadow: hs,
+        transform: `translate(-50%,-50%) translate(${b.x}px,${b.y}px) rotate(${rot + b.r}deg) scale(${scale})`,
+      }}
+    >
+      {text}
+    </div>
+  );
+};
+
+const Sprout: React.FC<{
+  x: number; y: number; grow: number; frame: number; seed: number;
+  scale?: number; c1?: string; c2?: string;
+}> = ({ x, y, grow, frame, seed, scale = 1, c1 = C.forest, c2 = C.clover }) => {
+  if (grow <= 0.001) return null;
+  const sway = Math.sin(frame * 0.09 + seed) * 5 * scale;
+  const h = 90 * grow * scale;
+  const stem = `M0,0 Q${sway * 0.6},${-h * 0.5} ${sway},${-h}`;
+  const lx = sway - 17 * scale * grow;
+  const rx = sway + 17 * scale * grow;
+  const ly = -h * 0.88;
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <path d={stem} stroke={C.ink} strokeWidth={9 * scale} fill="none" strokeLinecap="round" />
+      <path d={stem} stroke={c1} strokeWidth={5 * scale} fill="none" strokeLinecap="round" />
+      <ellipse cx={lx} cy={ly} rx={23 * scale * grow} ry={11 * scale * grow} fill={c2} stroke={C.ink} strokeWidth={3} transform={`rotate(-30 ${lx} ${ly})`} />
+      <ellipse cx={rx} cy={ly} rx={23 * scale * grow} ry={11 * scale * grow} fill={c2} stroke={C.ink} strokeWidth={3} transform={`rotate(30 ${rx} ${ly})`} />
+    </g>
+  );
+};
+
+const Coin: React.FC<{ x: number; y: number; r: number; spin: number; opacity?: number }> = ({ x, y, r, spin, opacity = 1 }) => {
+  const sx = Math.max(0.08, Math.abs(Math.cos(spin)));
+  return (
+    <g transform={`translate(${x},${y}) scale(${sx},1)`} opacity={opacity}>
+      <circle r={r} fill={C.gold} stroke={C.mud} strokeWidth={r * 0.12} />
+      <circle r={r * 0.68} fill="none" stroke={C.mud} strokeWidth={r * 0.07} strokeDasharray={`${r * 0.25} ${r * 0.12}`} />
+      <path d={starPath(r * 0.4, r * 0.17, 5)} fill="#FFE08A" stroke={C.mud} strokeWidth={r * 0.04} />
+    </g>
+  );
+};
+
+const Sack: React.FC<{
+  x: number; y: number; s: number; sx?: number; sy?: number; rot?: number; color?: string;
+}> = ({ x, y, s, sx = 1, sy = 1, rot = 0, color = C.parch }) => (
+  <g transform={`translate(${x},${y}) rotate(${rot}) scale(${s * sx},${s * sy})`}>
+    <path
+      d="M-95,0 Q-125,-70 -90,-135 Q-60,-170 -35,-190 L-45,-215 Q0,-235 45,-215 L35,-190 Q60,-170 90,-135 Q125,-70 95,0 Q0,25 -95,0Z"
+      fill={color} stroke={C.ink} strokeWidth={6} strokeLinejoin="round"
+    />
+    <path d="M-40,-196 Q0,-174 40,-196" stroke={C.ink} strokeWidth={6} fill="none" strokeLinecap="round" />
+    <path d="M-62,-62 Q0,-28 62,-62" stroke={C.ink} strokeWidth={4} fill="none" strokeDasharray="12 9" opacity={0.6} />
+    <path d="M0,-130 L0,-78 M-14,-118 L0,-104 M14,-118 L0,-104 M-14,-96 L0,-82 M14,-96 L0,-82" stroke={C.mud} strokeWidth={5} fill="none" strokeLinecap="round" />
+  </g>
+);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESCENA 1 — EL GANCHO ISEKAI (frames 0–420)
+   ═══════════════════════════════════════════════════════════════════════════ */
+interface SceneProps {
+  localFrame: number;
+  fps: number;
+}
+
+const TEAR_PTS: Pt[] = Array.from({ length: 17 }, (_, i) => [
+  540 + (i % 2 === 0 ? -1 : 1) * (14 + rand(i + 3) * 40),
+  i * 120,
+]);
+const tearList = TEAR_PTS.map(([x, y]) => `${x.toFixed(0)}px ${y}px`).join(", ");
+const CLIP_LEFT = `polygon(0px 0px, ${tearList}, 0px ${H}px)`;
+const CLIP_RIGHT = `polygon(${W}px 0px, ${tearList}, ${W}px ${H}px)`;
+
+const CityNight: React.FC<{ frame: number; truckT: number }> = ({ frame, truckT }) => {
+  const s = 0.12 + 3.4 * Math.pow(truckT, 3);
+  const flick = 0.75 + 0.25 * Math.sin(frame * 0.7 + 2);
+  const bld: [number, number, number][] = [
+    [-20, 220, 760], [190, 160, 560], [330, 240, 880], [580, 180, 640], [740, 260, 820], [980, 200, 600],
+  ];
+  return (
+    <Layer>
+      <defs>
+        <linearGradient id="c1-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={C.asphalt} />
+          <stop offset="1" stopColor="#5C6078" />
+        </linearGradient>
+        <radialGradient id="c1-beam">
+          <stop offset="0" stopColor="#FFF8E1" stopOpacity="1" />
+          <stop offset="0.35" stopColor={C.beam} stopOpacity="0.85" />
+          <stop offset="1" stopColor={C.beam} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width={W} height={H} fill="url(#c1-sky)" />
+      <path d={blob(820, 300, 90, 90, 4, 12, 0.03)} fill="#EDF2F4" opacity={0.25} />
+      {/* Siluetas lejanas (capa 2) */}
+      {bld.map(([x, w, h], i) => (
+        <g key={i}>
+          <path d={`M${x},1200 L${x},${1200 - h} L${x + w * 0.5},${1200 - h - 30 + rand(i) * 20} L${x + w},${1200 - h} L${x + w},1200Z`} fill={i % 2 ? "#1E2033" : "#252840"} stroke={C.ink} strokeWidth={4} opacity={0.95} />
+          {Array.from({ length: 12 }, (_, k) => (
+            <rect key={k} x={x + 24 + (k % 3) * (w / 3.4)} y={1200 - h + 60 + Math.floor(k / 3) * 130} width={22} height={34} fill={C.beam} opacity={rand(i * 10 + k) > 0.45 ? 0.75 : 0.08} />
+          ))}
+        </g>
+      ))}
+      {/* Calle */}
+      <path d={`M0,1180 L${W},1180 L${W},${H} L0,${H}Z`} fill="#1B1D2E" />
+      <path d={`M0,1180 L${W},1180`} stroke={C.hoodie} strokeWidth={5} opacity={0.5} />
+      {Array.from({ length: 8 }, (_, i) => {
+        const t = (i / 8 + frame * 0.004) % 1;
+        const y = 1190 + t * t * 730;
+        const wd = 8 + t * 40;
+        return <path key={i} d={`M${540 - wd},${y} L${540 + wd},${y}`} stroke={C.pale} strokeWidth={4 + t * 14} strokeLinecap="round" opacity={0.5} />;
+      })}
+      {/* Farolas */}
+      {[130, 950].map((x, i) => (
+        <g key={i}>
+          <path d={`M${x},1200 L${x},760 Q${x},700 ${i ? x - 70 : x + 70},700`} stroke={C.ink} strokeWidth={14} fill="none" strokeLinecap="round" />
+          <circle cx={i ? x - 70 : x + 70} cy={716} r={170} fill={C.beam} opacity={0.18 * flick} />
+          <circle cx={i ? x - 70 : x + 70} cy={716} r={26} fill={C.beam} stroke={C.ink} strokeWidth={5} />
+        </g>
+      ))}
+      {/* Camión-kun */}
+      {truckT > 0 && (
+        <g transform={`translate(540,1320) scale(${s})`}>
+          <path d="M-170,-10 L-170,-250 L40,-250 L40,-10Z" fill="#14152a" stroke={C.ink} strokeWidth={6 / s + 2} />
+          <path d="M40,-10 L40,-190 L120,-190 L170,-120 L170,-10Z" fill="#1d1f38" stroke={C.ink} strokeWidth={6 / s + 2} />
+          <path d="M58,-175 L112,-175 L148,-124 L58,-124Z" fill={C.hoodie} opacity={0.7} />
+          <path d="M-60,-16 Q0,-34 60,-16" stroke={C.hoodie} strokeWidth={5} fill="none" />
+          <circle cx={-132} cy={0} r={34} fill="#0c0c18" stroke={C.ink} strokeWidth={5} />
+          <circle cx={110} cy={0} r={34} fill="#0c0c18" stroke={C.ink} strokeWidth={5} />
+          <circle cx={150} cy={-60} r={22} fill={C.beam} stroke={C.ink} strokeWidth={4} />
+          <circle cx={-150} cy={-60} r={22} fill={C.beam} stroke={C.ink} strokeWidth={4} />
+          <circle cx={-60} cy={-262} r={10} fill={C.red} />
+          <circle cx={0} cy={-262} r={10} fill={C.red} />
+          <circle cx={150} cy={-60} r={230} fill="url(#c1-beam)" opacity={truckT} />
+          <circle cx={-150} cy={-60} r={230} fill="url(#c1-beam)" opacity={truckT} />
+        </g>
+      )}
+      <path d={`M${TEAR_PTS.map(([x, y]) => `${x},${y}`).join(" L")}`} stroke={C.paper} strokeWidth={20} fill="none" strokeLinejoin="round" opacity={0.95} />
+      <path d={`M${TEAR_PTS.map(([x, y]) => `${x},${y}`).join(" L")}`} stroke={C.ink} strokeWidth={3} fill="none" strokeDasharray="14 10" />
+    </Layer>
+  );
+};
+
+const IsekaiMud: React.FC<{ frame: number }> = ({ frame }) => {
+  const bs = Math.floor(frame / 3) % 3;
+  return (
+    <Layer>
+      <defs>
+        <linearGradient id="i1-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#FFE8B0" />
+          <stop offset="1" stopColor={C.paper} />
+        </linearGradient>
+      </defs>
+      <rect width={W} height={H} fill="url(#i1-sky)" />
+      <path d={blob(780, 420, 130, 130, 6 + bs, 12, 0.04)} fill={C.gold} opacity={0.35} />
+      <path d={blob(240, 1180, 520, 190, 8 + bs, 14, 0.08)} fill={C.forest} opacity={0.55} />
+      <path d={blob(880, 1210, 480, 160, 9 + bs, 14, 0.08)} fill={C.aura} opacity={0.5} />
+      <path d={blob(540, 1790, 880, 560, 11 + bs, 18, 0.06)} fill={C.mud} />
+      <path d={blob(540, 1700, 760, 420, 12 + bs, 18, 0.07)} fill={C.parch} opacity={0.5} />
+      {Array.from({ length: 7 }, (_, i) => (
+        <path key={i} d={`M${-40},${1320 + i * 80} Q${540},${1290 + i * 80 + (i % 2) * 24} ${1120},${1320 + i * 80}`} stroke={C.ink} strokeWidth={3} fill="none" opacity={0.25} />
+      ))}
+    </Layer>
+  );
+};
+
+export const Scene1IsekaiHook: React.FC<SceneProps & { blink: number }> = ({ localFrame: f, fps, blink }) => {
+  const truckT = prog(f, 36, 110);
+  const tear = easeInOut(prog(f, 124, 214));
+  const launch = prog(f, 118, 240);
+  const arc = 4 * launch * (1 - launch);
+  const landed = f >= 240;
+  const land = pop(f, 240, fps);
+  const afraid = f > 60 && f < 110 ? Math.sin(f * 2.4) * 3 : 0;
+
+  // Squash & stretch del estudiante
+  let sxv = 1;
+  let syv = 1;
+  if (f < 110) {
+    syv = 1 + 0.012 * Math.sin(f * 0.12) - blink * 0.014;
+  } else if (!landed) {
+    const st = launch > 0.5 ? 0.14 * prog(launch, 0.6, 1) : 0.08 * (1 - prog(launch, 0, 0.2));
+    syv = 1 + st;
+    sxv = 1 - st * 0.7;
+  } else {
+    sxv = 1 + 0.3 * (1 - land); // 1.3 → 1
+    syv = 1 - 0.3 * (1 - land); // 0.7 → 1
+  }
+  const feetY = f < 118 ? 1540 : 1540 - arc * 800;
+  const px = 540 + afraid + (f >= 118 && !landed ? Math.sin(launch * TWO_PI) * 110 : 0);
+  const rot = f < 118 ? 0 : landed ? 12 * (1 - land) : launch * 720;
+  const studentSrc = f < 110 ? IMG.studentFront : f < 330 ? IMG.studentShocked : IMG.studentFront;
+  const studentBlend: Blend = f < 200 ? "normal" : "multiply";
+
+  // Destellos / flash
+  const yellow = prog(f, 86, 110) * 0.85 * (1 - prog(f, 112, 134));
+  const white = interpolate(f, [108, 111, 136], [0, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const honk = springSquash(f, 104, fps);
+
+  // RPG
+  const ui = springSquash(f, 246, fps);
+  const uiBob = Math.sin(f * 0.06) * 10;
+  const lines = [
+    { t: "Magia: 0", y: -30, s: 262 },
+    { t: "Fuerza: 2", y: 58, s: 282 },
+    { t: "Clase: Campesino", y: 146, s: 302 },
+  ];
+
+  // Mochila → saco de semillas
+  const bpT = prog(f, 336, 366);
+  const sackPop = springSquash(f, 366, fps);
+
+  return (
+    <>
+      <PaperBase />
+      <IsekaiMud frame={f} />
+      {/* Fondo urbano rasgado en dos mitades irregulares con sombra proyectada */}
+      <div style={{ position: "absolute", inset: 0, transformOrigin: "0% 60%", transform: `translateX(${-tear * 700}px) rotate(${-tear * 9}deg)`, filter: tear > 0 ? "drop-shadow(12px 0 16px rgba(40,54,24,0.5))" : undefined }}>
+        <div style={{ position: "absolute", inset: 0, clipPath: CLIP_LEFT }}>
+          <CityNight frame={f} truckT={truckT} />
+        </div>
+      </div>
+      <div style={{ position: "absolute", inset: 0, transformOrigin: "100% 60%", transform: `translateX(${tear * 700}px) rotate(${tear * 9}deg)`, filter: tear > 0 ? "drop-shadow(-12px 0 16px rgba(40,54,24,0.5))" : undefined }}>
+        <div style={{ position: "absolute", inset: 0, clipPath: CLIP_RIGHT }}>
+          <CityNight frame={f} truckT={truckT} />
+        </div>
+      </div>
+
+      {/* Charco de lodo + mochila/saco */}
+      <Layer>
+        {landed && (
+          <g>
+            <ellipse cx={540} cy={1548} rx={270 * land} ry={58 * land} fill={C.mud} stroke={C.ink} strokeWidth={5} />
+            <ellipse cx={540} cy={1540} rx={190 * land} ry={36 * land} fill="#8c4f17" opacity={0.6} />
+          </g>
+        )}
+        {f >= 330 && (
+          <g transform={`translate(190,1560)`}>
+            {f < 366 && (
+              <g transform={`scale(${1 - bpT * 0.4},${1 + Math.sin(bpT * Math.PI) * 0.15})`} opacity={1 - bpT}>
+                <path d="M-70,0 Q-82,-120 -40,-150 Q0,-172 40,-150 Q82,-120 70,0 Z" fill={C.hoodie} stroke={C.ink} strokeWidth={6} />
+                <path d="M-40,-60 Q0,-40 40,-60 L40,-20 Q0,0 -40,-20Z" fill="#6f7a92" stroke={C.ink} strokeWidth={4} />
+                <path d="M-30,-150 Q0,-210 30,-150" stroke={C.ink} strokeWidth={8} fill="none" />
+              </g>
+            )}
+            {f >= 366 && (
+              <g>
+                <Sack x={0} y={0} s={0.85} sx={sackPop.sx} sy={sackPop.sy} color={C.parch} />
+                <text x={0} y={-60 * sackPop.g} textAnchor="middle" fontFamily={HAND} fontSize={30} fontWeight={700} fill={C.ink} opacity={sackPop.g}>SEMILLAS</text>
+              </g>
+            )}
+          </g>
+        )}
+      </Layer>
+
+      {f >= 366 && f < 420 &&
+        Array.from({ length: 6 }, (_, i) => {
+          const t = (f - 366) / 54;
+          const a = (i / 6) * TWO_PI;
+          return <Glow key={i} src={VFX.star} x={190 + Math.cos(a) * 170 * t} y={1440 + Math.sin(a) * 140 * t} size={60 * (1 - t * 0.4)} color={C.gold} opacity={1 - t} rot={t * 180} />;
+        })}
+
+      {/* Capa 4: protagonista */}
+      <Sprite
+        src={studentSrc} frame={f} x={px} y={feetY} w={520} h={780} rot={rot}
+        sx={sxv} sy={syv} blend={studentBlend} seed={1}
+        origin={landed || f < 118 ? "50% 100%" : "50% 55%"}
+      />
+
+      {/* Salpicaduras de barro */}
+      {Array.from({ length: 14 }, (_, i) => {
+        const t = f - 240;
+        if (t < 0 || t > 70) return null;
+        const a = ((200 + (i / 13) * 140) * Math.PI) / 180;
+        const sp = 12 + rand(i) * 14;
+        return (
+          <Glow key={i} src={VFX.dirt} x={540 + Math.cos(a) * sp * t} y={1520 + Math.sin(a) * sp * t + 0.42 * t * t}
+            size={50 + rand(i + 4) * 36} color={C.mud} opacity={1 - t / 70} rot={t * 8 * (i % 2 ? 1 : -1)} />
+        );
+      })}
+
+      {/* Interfaz RPG flotante */}
+      {f >= 246 && (
+        <Layer>
+          <g transform={`translate(540,${560 + uiBob}) scale(${ui.sx},${ui.sy}) rotate(${Math.sin(f * 0.05) * 1.2})`}>
+            <path d={wobblyRect(-390, -210, 780, 420, 3 + (Math.floor(f / 3) % 3), 7)} fill="rgba(40,54,24,0.25)" transform="translate(14,18)" />
+            <line x1={-420} y1={-212} x2={420} y2={-212} stroke={C.ink} strokeWidth={52} strokeLinecap="round" />
+            <line x1={-420} y1={-212} x2={420} y2={-212} stroke={C.parch} strokeWidth={42} strokeLinecap="round" />
+            <line x1={-420} y1={212} x2={420} y2={212} stroke={C.ink} strokeWidth={52} strokeLinecap="round" />
+            <line x1={-420} y1={212} x2={420} y2={212} stroke={C.parch} strokeWidth={42} strokeLinecap="round" />
+            <path d={wobblyRect(-390, -210, 780, 420, 3 + (Math.floor(f / 3) % 3), 7)} fill={C.paper} stroke={C.ink} strokeWidth={6} strokeLinejoin="round" />
+            <path d={wobblyRect(-362, -182, 724, 364, 5, 5)} fill="none" stroke={C.mud} strokeWidth={3} strokeDasharray="16 9" opacity={0.7} />
+            <text x={0} y={-118} textAnchor="middle" fontFamily={SERIF} fontStyle="italic" fontSize={34} fill={C.ink} opacity={0.7}>— Ficha de personaje —</text>
+            {lines.map((l, i) => {
+              const n = Math.max(0, Math.floor((f - l.s) * 0.9));
+              return (
+                <g key={i}>
+                  <text x={-320} y={l.y + 20} fontFamily={SERIF} fontStyle="italic" fontWeight={700} fontSize={62} fill={C.ink}>{l.t.slice(0, n)}</text>
+                  {i < 2 && n >= l.t.length && (
+                    <path d={`M-320,${l.y + 38} Q-200,${l.y + 26} -80,${l.y + 40} T160,${l.y + 36}`} stroke={C.red} strokeWidth={5} fill="none" strokeLinecap="round" strokeDasharray={400} strokeDashoffset={400 * (1 - prog(f, l.s + 14, l.s + 30))} />
+                  )}
+                </g>
+              );
+            })}
+            <path d={starPath(20, 8, 4)} transform="translate(-355,-150)" fill={C.gold} stroke={C.ink} strokeWidth={3} />
+            <path d={starPath(20, 8, 4)} transform="translate(355,150)" fill={C.gold} stroke={C.ink} strokeWidth={3} />
+          </g>
+        </Layer>
+      )}
+
+      {/* Claxon */}
+      <Ink text="¡¡PIIIIIIIII!!" x={540} y={420} size={118} frame={f} color={C.red} halo={C.beam} rot={-6} seed={7}
+        scale={f >= 104 && f < 150 ? honk.sy : 0} opacity={1 - prog(f, 138, 150)} />
+
+      {/* Faros cegadores */}
+      <div style={{ position: "absolute", inset: 0, backgroundColor: C.beam, opacity: yellow, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", inset: 0, backgroundColor: "#FFF8E1", opacity: white, pointerEvents: "none" }} />
+    </>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESCENA 2 — LA INEFICIENCIA MEDIEVAL (frames 420–1080)
+   ═══════════════════════════════════════════════════════════════════════════ */
+export const Scene2MedievalInefficiency: React.FC<SceneProps> = ({ localFrame: f, fps }) => {
+  const bs = Math.floor(f / 3) % 3;
+  const pan = (1 - easeInOut(prog(f, 0, 60))) * 900;
+  const o1 = pan * 0.15;
+  const o2 = pan * 0.4;
+  const o3 = pan * 0.75;
+  const o4 = pan;
+
+  // Goma de borrar
+  const enterT = easeOut(prog(f, 190, 250));
+  const exitT = easeIn(prog(f, 400, 452));
+  const rubbing = f >= 250 && f < 400;
+  const rub = rubbing ? Math.sin((f - 250) * 0.55) : 0;
+  const plotX = 270 + o3;
+  const hx = plotX + rub * 110;
+  const hy = -800 + 2050 * enterT * (1 - exitT);
+  const signOpacity = 1 - prog(f, 262, 392);
+  const grass = prog(f, 350, 470);
+
+  // Reacción del campesino
+  const jump = Math.max(0, Math.sin(prog(f, 330, 362) * Math.PI)) * 46;
+  const caption = f < 300 ? "Barbecho: 1/3 de la tierra DORMIDA" : "¡Borrón y cuenta nueva!";
+  const capStart = f < 300 ? 120 : 306;
+  const capN = Math.max(0, Math.floor((f - capStart) * 0.8));
+  const capText = caption.slice(0, capN);
+
+  const shavings = Array.from({ length: 16 }, (_, i) => {
+    const s = 262 + i * 8;
+    const x0 = plotX + (rand(i) - 0.5) * 260;
+    const y0 = 1240 + rand(i + 5) * 80;
+    const vx = (rand(i + 9) - 0.5) * 3;
+    const gy = 1380 + rand(i + 2) * 90;
+    const landT = Math.sqrt((2 * (gy - y0)) / 0.45);
+    return { s, x0, y0, vx, gy, landT, i };
+  });
+
+  return (
+    <>
+      <PaperBase />
+      {/* Capa 1 + 2: cielo y siluetas */}
+      <Layer>
+        <defs>
+          <linearGradient id="s2-sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#F2E2B6" />
+            <stop offset="1" stopColor={C.paper} />
+          </linearGradient>
+        </defs>
+        <rect width={W} height={H} fill="url(#s2-sky)" />
+        <path d={blob(790 + o1, 360, 120, 120, 3 + bs, 12, 0.04)} fill={C.gold} opacity={0.3} />
+        <path d={blob(260 + o2, 1110, 560, 190, 14 + bs, 14, 0.08)} fill={C.forest} opacity={0.5} />
+        <path d={blob(900 + o2, 1130, 520, 170, 15 + bs, 14, 0.08)} fill={C.forest} opacity={0.38} />
+        {/* Capa 3: tierra */}
+        <path d={blob(540 + o3, 1650, 1500, 700, 16 + bs, 20, 0.05)} fill={C.mud} />
+        <path d={blob(540 + o3, 1560, 1300, 520, 17 + bs, 20, 0.06)} fill={C.parch} opacity={0.55} />
+        {Array.from({ length: 6 }, (_, i) => (
+          <path key={i} d={`M${-300 + o3},${1300 + i * 90} Q${540 + o3},${1270 + i * 90 + (i % 2) * 30} ${1500 + o3},${1300 + i * 90}`} stroke={C.ink} strokeWidth={3} fill="none" opacity={0.22} />
+        ))}
+        {/* Parcela vacía */}
+        <path d={blob(plotX, 1345, 270, 125, 21 + bs, 14, 0.06)} fill="#c98f4a" stroke={C.ink} strokeWidth={4} opacity={0.95} />
+        {[-150, -60, 40, 130].map((dx, i) => (
+          <path key={i} d={`M${plotX + dx},1310 l14,22 l-12,16 l16,24`} stroke={C.ink} strokeWidth={3} fill="none" opacity={0.45} />
+        ))}
+        <path d={blob(plotX, 1345, 250, 112, 22 + bs, 14, 0.06)} fill={C.aura} opacity={0.75 * grass} />
+        {/* Caritas durmiendo */}
+        {[[-110, 1338], [10, 1372], [120, 1332]].map(([dx, dy], i) => {
+          const fo = 1 - prog(f, 300, 350);
+          const ph = ((f + i * 40) % 120) / 120;
+          return (
+            <g key={i} opacity={fo * prog(f, 70 + i * 10, 90 + i * 10)}>
+              <circle cx={plotX + dx} cy={dy + Math.sin(f * 0.05 + i) * 3} r={36} fill={C.pale} stroke={C.ink} strokeWidth={4} />
+              <path d={`M${plotX + dx - 18},${dy - 2} q8,8 16,0 M${plotX + dx + 4},${dy - 2} q8,8 16,0`} stroke={C.ink} strokeWidth={3.5} fill="none" strokeLinecap="round" />
+              <path d={`M${plotX + dx - 8},${dy + 16} q8,6 16,0`} stroke={C.ink} strokeWidth={3} fill="none" strokeLinecap="round" />
+              <text x={plotX + dx + 36 + ph * 22} y={dy - 36 - ph * 60} fontFamily={HAND} fontWeight={700} fontSize={34 + i * 4} fill={C.ink} opacity={1 - ph}>z</text>
+            </g>
+          );
+        })}
+      </Layer>
+
+      <Sprite src={IMG.castle} frame={f} x={780 + o2} y={1090} w={520} h={470} opacity={0.42} filter="grayscale(0.4)" seed={2} />
+
+      {/* Cartel "Fallow Land" */}
+      <Sprite src={IMG.fallowSign} frame={f} x={plotX} y={1390} w={340} h={380} opacity={signOpacity}
+        rot={rubbing ? rub * 1.6 : 0} sy={1 - 0.03 * Math.abs(rub)} seed={3} />
+
+      {/* Trigo raquítico */}
+      {[0, 1, 2].map((i) => (
+        <Sprite key={i} src={IMG.wheat} frame={f} x={[900, 985, 830][i] + o4} y={[1500, 1545, 1560][i]} w={[150, 120, 110][i]} h={[210, 170, 160][i]}
+          rot={[14, -10, 18][i] + Math.sin(f * 0.05 + i) * 2} filter="grayscale(0.55) brightness(0.95)" seed={4 + i} />
+      ))}
+
+      {/* Capa 4: campesino */}
+      <Sprite src={IMG.peasant} frame={f} x={730 + o4} y={1600 - jump} w={520} h={800}
+        rot={-2 + Math.sin(f * 0.04) * 1.2} sy={1 + 0.012 * Math.sin(f * 0.07) + (jump > 0 ? 0.06 : 0)} sx={jump > 0 ? 0.95 : 1} seed={8} />
+      {[0, 1].map((k) => {
+        const t = ((f + k * 45) % 90) / 90;
+        return <Glow key={k} src={VFX.smoke} x={690 + o4 - t * 40} y={930 - t * 80} size={70 + t * 70} color={C.hoodie} opacity={0.5 * Math.sin(t * Math.PI) * (1 - prog(f, 300, 330))} rot={t * 40} />;
+      })}
+
+      <Layer>
+        {/* Brotes de las virutas y césped renacido */}
+        {shavings.map(({ s, x0, vx, gy, landT, i }) => {
+          const sl = s + landT;
+          return <Sprout key={i} x={x0 + vx * landT} y={gy} grow={pop(f, sl, fps)} frame={f} seed={i} scale={0.9} />;
+        })}
+        {Array.from({ length: 9 }, (_, k) => (
+          <Sprout key={`g${k}`} x={plotX - 200 + k * 50} y={1390 + (k % 3) * 22} grow={pop(f, 380 + k * 6, fps)} frame={f} seed={k + 20} scale={1.3} c1={C.forest} c2={C.aura} />
+        ))}
+        {/* Virutas cayendo */}
+        {shavings.map(({ s, x0, y0, vx, gy, i }) => {
+          const t = f - s;
+          if (t < 0) return null;
+          const y = Math.min(gy, y0 + 0.5 * 0.45 * t * t);
+          const onGround = y >= gy;
+          return (
+            <g key={`v${i}`} transform={`translate(${x0 + vx * t},${y}) rotate(${onGround ? 20 : t * 9})`} opacity={onGround ? Math.max(0, 1 - (t - 60) / 80) : 1}>
+              <path d="M-12,0 Q-5,-14 7,-7 Q16,0 9,9" stroke={C.pink} strokeWidth={7} fill="none" strokeLinecap="round" />
+              <path d="M-12,0 Q-5,-14 7,-7 Q16,0 9,9" stroke={C.ink} strokeWidth={2} fill="none" opacity={0.5} />
+            </g>
+          );
+        })}
+        {/* Mano gigante con goma de borrar */}
+        {f >= 190 && f < 460 && (
+          <g transform={`translate(${hx},${hy}) rotate(${-14 + rub * 5}) scale(1.5)`}>
+            <path d="M-130,-1500 L130,-1500 L112,-330 L-112,-330Z" fill={C.hoodie} stroke={C.ink} strokeWidth={6} />
+            <path d="M-128,-360 Q0,-300 128,-360 L122,-296 Q0,-246 -122,-296Z" fill={C.pale} stroke={C.ink} strokeWidth={5} />
+            <path d="M-112,-300 Q-136,-150 -84,-84 L84,-84 Q136,-150 112,-300Z" fill={C.skin} stroke={C.ink} strokeWidth={6} />
+            <path d="M-92,-90 L-66,-26 M-34,-84 L-22,-18 M22,-84 L30,-18 M74,-90 L58,-30" stroke={C.ink} strokeWidth={50} strokeLinecap="round" />
+            <path d="M-92,-90 L-66,-26 M-34,-84 L-22,-18 M22,-84 L30,-18 M74,-90 L58,-30" stroke={C.skin} strokeWidth={40} strokeLinecap="round" />
+            <path d="M-118,-190 Q-170,-120 -122,-40" stroke={C.ink} strokeWidth={50} strokeLinecap="round" fill="none" />
+            <path d="M-118,-190 Q-170,-120 -122,-40" stroke={C.skin} strokeWidth={40} strokeLinecap="round" fill="none" />
+            <path d="M-118,-30 Q-118,-60 -92,-60 L92,-60 Q118,-60 118,-30 L118,34 Q118,62 92,62 L-92,62 Q-118,62 -118,34Z" fill={C.pink} stroke={C.ink} strokeWidth={6} />
+            <path d="M-118,-6 L118,-6 L118,28 L-118,28Z" fill={C.hoodie} opacity={0.85} />
+            <path d="M-118,-6 L118,-6 M-118,28 L118,28" stroke={C.ink} strokeWidth={3} />
+          </g>
+        )}
+      </Layer>
+
+      {/* Capa 5: motas de polvo y rótulo */}
+      {Array.from({ length: 9 }, (_, i) => (
+        <Glow key={i} src={VFX.star} x={(rand(i) * W + f * (0.4 + rand(i + 3))) % W} y={500 + rand(i + 6) * 900 + Math.sin(f * 0.03 + i) * 20}
+          size={18 + rand(i + 8) * 18} color={C.parch} opacity={0.5} rot={f * 0.5 + i * 40} />
+      ))}
+      <Ink text={capText} x={540} y={720} size={f < 300 ? 56 : 70} frame={f} serif={false} seed={11} rot={-2} opacity={prog(f, 120, 130) * (f > 300 && f < 306 ? 0 : 1)} />
+    </>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESCENA 3 — EL SECRETO NORFOLK: 4 PARCELAS (frames 1080–2160)
+   ═══════════════════════════════════════════════════════════════════════════ */
+const BC = { x: 540, y: 930 };
+const PLOT_START = [170, 330, 500, 670];
+const PLOT_OFF: Pt[] = [[-215, -215], [215, -215], [215, 215], [-215, 215]];
+const PLOT_COL = [C.gold, C.turnip, C.barley, C.clover];
+const PLOT_NAME = ["Trigo", "Nabo", "Cebada", "Trébol"];
+const WEEDS: Pt[] = [[-150, 40], [-110, -90], [140, 60], [120, -100], [-30, -140], [60, 150], [-140, 130]];
+
+export const Scene3NorfolkFourFields: React.FC<SceneProps> = ({ localFrame: f, fps }) => {
+  const bs = Math.floor(f / 3) % 3;
+  const rotCfg = { damping: 14, stiffness: 70 };
+  const rotSteps = [820, 900, 980].map((st) => pop(f, st, fps, rotCfg));
+  const rotDeg = 90 * (rotSteps[0] + rotSteps[1] + rotSteps[2]);
+  const rotRad = (rotDeg * Math.PI) / 180;
+  const year = 1 + (f >= 820 ? 1 : 0) + (f >= 900 ? 1 : 0) + (f >= 980 ? 1 : 0);
+  const arrowsOn = springSquash(f, 780, fps);
+
+  const plotPos = (i: number): Pt => {
+    const [dx, dy] = PLOT_OFF[i];
+    return [BC.x + dx * Math.cos(rotRad) - dy * Math.sin(rotRad), BC.y + dx * Math.sin(rotRad) + dy * Math.cos(rotRad)];
+  };
+  const sq = PLOT_START.map((s) => springSquash(f, s, fps));
+
+  // Pluma: trazado de la cruz dorada
+  const vP = easeInOut(prog(f, 30, 85));
+  const hP = easeInOut(prog(f, 95, 150));
+  const penX = interpolate(f, [0, 30, 85, 95, 150, 185], [900, 540, 540, 110, 970, 1140], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const penY = interpolate(f, [0, 30, 85, 95, 150, 185], [250, 500, 1360, 930, 930, 400], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const penOp = 1 - prog(f, 170, 190);
+
+  const [x0p, y0p] = plotPos(0);
+  const [x1p, y1p] = plotPos(1);
+  const [x2p, y2p] = plotPos(2);
+  const [x3p, y3p] = plotPos(3);
+  const P = [[x0p, y0p], [x1p, y1p], [x2p, y2p], [x3p, y3p]];
+
+  return (
+    <>
+      <PaperBase color={C.parch} />
+      {/* Capa 1: escritorio de madera y utensilios */}
+      <Layer>
+        <defs>
+          <linearGradient id="s3-wood" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#c58a45" />
+            <stop offset="1" stopColor={C.mud} />
+          </linearGradient>
+          <linearGradient id="s3-parch" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor={C.paper} />
+            <stop offset="1" stopColor="#EBD9A4" />
+          </linearGradient>
+        </defs>
+        <rect width={W} height={H} fill="url(#s3-wood)" />
+        {Array.from({ length: 16 }, (_, i) => (
+          <path key={i} d={`M-20,${60 + i * 125} Q270,${30 + i * 125 + (i % 3) * 16} 540,${70 + i * 125} T1100,${50 + i * 125}`} stroke={C.ink} strokeWidth={3} fill="none" opacity={0.14} />
+        ))}
+        <circle cx={170} cy={1620} r={78} fill={C.ink} stroke="#14200b" strokeWidth={6} />
+        <ellipse cx={150} cy={1596} rx={26} ry={14} fill={C.paper} opacity={0.25} />
+        <circle cx={170} cy={1620} r={42} fill="#0c1307" />
+        <circle cx={930} cy={1640} r={64} fill="none" stroke={C.gold} strokeWidth={10} />
+        <path d="M930,1640 L930,1590 M930,1640 L966,1660" stroke={C.gold} strokeWidth={8} strokeLinecap="round" />
+
+        {/* Pergamino */}
+        <path d={wobblyRect(120, 520, 860, 860, 40 + bs, 7)} fill="rgba(40,24,6,0.35)" transform="translate(16,22)" />
+        <line x1={92} y1={514} x2={988} y2={514} stroke={C.ink} strokeWidth={70} strokeLinecap="round" />
+        <line x1={92} y1={514} x2={988} y2={514} stroke={C.parch} strokeWidth={58} strokeLinecap="round" />
+        <line x1={92} y1={1386} x2={988} y2={1386} stroke={C.ink} strokeWidth={70} strokeLinecap="round" />
+        <line x1={92} y1={1386} x2={988} y2={1386} stroke={C.parch} strokeWidth={58} strokeLinecap="round" />
+        <path d={wobblyRect(120, 520, 860, 860, 40 + bs, 7)} fill="url(#s3-parch)" stroke={C.ink} strokeWidth={5} strokeLinejoin="round" />
+
+        {/* Lavados de acuarela + surcos por parcela (siguen la rotación) */}
+        {P.map(([px, py], i) => {
+          const g = sq[i].g;
+          return (
+            <g key={i} opacity={clamp01(g)}>
+              <path d={blob(px, py, 188, 188, i * 7 + bs, 16, 0.07)} fill={PLOT_COL[i]} opacity={0.24} />
+              <path d={blob(px, py + 20, 160, 150, i * 7 + 2 + bs, 16, 0.08)} fill={C.mud} opacity={0.22} />
+              {[0, 1, 2, 3].map((k) => (
+                <path key={k} d={`M${px - 150},${py + 40 + k * 34} Q${px},${py + 18 + k * 34} ${px + 150},${py + 40 + k * 34}`} stroke={C.ink} strokeWidth={3} fill="none" opacity={0.22} />
+              ))}
+            </g>
+          );
+        })}
+
+        {/* Maleza que el nabo se come */}
+        {WEEDS.map(([dx, dy], k) => {
+          const st = PLOT_START[1] + 40 + k * 10;
+          const eat = prog(f, st, st + 36);
+          const appear = clamp01(sq[1].g);
+          const wx = lerp(x1p + dx, x1p, easeIn(eat) * 0.7);
+          const wy = lerp(y1p + dy, y1p + 60, easeIn(eat) * 0.7);
+          const sc = (1 - eat) * appear;
+          if (sc <= 0.01) return null;
+          const d = "M-14,0 Q-18,-30 -26,-50 M0,0 Q0,-40 4,-62 M14,0 Q20,-28 30,-46";
+          return (
+            <g key={k} transform={`translate(${wx},${wy}) scale(${sc})`}>
+              <path d={d} stroke={C.ink} strokeWidth={11} fill="none" strokeLinecap="round" />
+              <path d={d} stroke={C.forest} strokeWidth={6} fill="none" strokeLinecap="round" />
+            </g>
+          );
+        })}
+
+        {/* Cruz dorada trazada por la pluma */}
+        <path d={`M540,520 L540,1380`} stroke={C.ink} strokeWidth={24} strokeLinecap="round" pathLength={1000} strokeDasharray={1000} strokeDashoffset={1000 * (1 - vP)} fill="none" />
+        <path d={`M120,930 L980,930`} stroke={C.ink} strokeWidth={24} strokeLinecap="round" pathLength={1000} strokeDasharray={1000} strokeDashoffset={1000 * (1 - hP)} fill="none" />
+        <path d={`M540,520 L540,1380`} stroke={C.gold} strokeWidth={14} strokeLinecap="round" pathLength={1000} strokeDasharray={1000} strokeDashoffset={1000 * (1 - vP)} fill="none" />
+        <path d={`M120,930 L980,930`} stroke={C.gold} strokeWidth={14} strokeLinecap="round" pathLength={1000} strokeDasharray={1000} strokeDashoffset={1000 * (1 - hP)} fill="none" />
+      </Layer>
+
+      {/* Capa 4: cultivos que brotan con spring */}
+      <Sprite src={IMG.wheat} frame={f} x={x0p - 105} y={y0p + 132} w={150} h={210} sx={sq[0].sx} sy={sq[0].sy} seed={1} />
+      <Sprite src={IMG.wheat} frame={f} x={x0p + 105} y={y0p + 132} w={150} h={210} sx={sq[0].sx} sy={sq[0].sy} seed={2} />
+      <Sprite src={IMG.wheat} frame={f} x={x0p} y={y0p + 122} w={250} h={330} sx={sq[0].sx} sy={sq[0].sy} seed={3} />
+      <Sprite src={IMG.turnip} frame={f} x={x1p} y={y1p + 112} w={270} h={300}
+        sx={sq[1].sx * (1 + 0.04 * Math.max(0, Math.sin((f - 370) * 0.5)) * (1 - prog(f, 470, 480)))}
+        sy={sq[1].sy * (1 - 0.04 * Math.max(0, Math.sin((f - 370) * 0.5)) * (1 - prog(f, 470, 480)))} seed={4} />
+      <Sprite src={IMG.barley} frame={f} x={x2p - 58} y={y2p + 122} w={230} h={320} sx={sq[2].sx} sy={sq[2].sy} seed={5} />
+      <Sprite src={IMG.clover} frame={f} x={x3p} y={y3p + 112} w={280} h={260} sx={sq[3].sx} sy={sq[3].sy} seed={6} />
+
+      <Layer>
+        {/* Monedas de oro flotando sobre el trigo */}
+        {[0, 1, 2, 3, 4].map((k) => {
+          const ph = (f - PLOT_START[0] - 30 - k * 22) / 110;
+          if (ph < 0) return null;
+          const p = ph % 1;
+          return <Coin key={k} x={x0p + (k - 2) * 48 + Math.sin(p * 6) * 14} y={y0p + 40 - p * 270} r={26} spin={f * 0.2 + k} opacity={Math.sin(p * Math.PI)} />;
+        })}
+        {/* Jarra espumosa de cebada */}
+        {(() => {
+          const g = pop(f, PLOT_START[2] + 25, fps);
+          if (g < 0.02) return null;
+          return (
+            <g transform={`translate(${x2p + 108},${y2p + 120}) scale(${g},${g}) rotate(${Math.sin(f * 0.1) * 3})`}>
+              <path d="M36,-60 Q86,-60 76,-26 Q68,-4 38,-14" stroke={C.ink} strokeWidth={16} fill="none" strokeLinecap="round" />
+              <path d="M36,-60 Q86,-60 76,-26 Q68,-4 38,-14" stroke={C.barley} strokeWidth={8} fill="none" strokeLinecap="round" />
+              <path d="M-38,-78 L-44,0 Q-44,12 -32,12 L32,12 Q44,12 44,0 L38,-78Z" fill={C.barley} stroke={C.ink} strokeWidth={6} strokeLinejoin="round" />
+              <path d="M-24,-60 L-28,-6" stroke="#FFD27A" strokeWidth={8} strokeLinecap="round" opacity={0.8} />
+              {[[-26, -92, 24], [0, -104, 28], [26, -92, 24], [-10, -122, 18], [16, -118, 20]].map(([bx, by, br], k) => (
+                <circle key={k} cx={bx} cy={by - Math.abs(Math.sin(f * 0.12 + k)) * 8} r={br} fill="#FFF3C4" stroke={C.ink} strokeWidth={4} />
+              ))}
+              {[0, 1, 2].map((k) => {
+                const p = ((f * 0.02 + k / 3) % 1);
+                return <circle key={k} cx={-18 + k * 18} cy={-10 - p * 60} r={4} fill="#FFD27A" opacity={1 - p} />;
+              })}
+            </g>
+          );
+        })()}
+        {/* Raíces luminosas del trébol */}
+        {sq[3].g > 0.05 && (
+          <g opacity={clamp01(sq[3].g)}>
+            {[[-70, 70], [-25, 85], [30, 80], [75, 66]].map(([dx, dy], k) => (
+              <path key={k} d={`M${x3p},${y3p + 118} Q${x3p + dx * 0.5},${y3p + 118 + dy * 0.4} ${x3p + dx},${y3p + 118 + dy}`}
+                stroke={C.aura} strokeWidth={6} fill="none" strokeLinecap="round" strokeDasharray="10 8" strokeDashoffset={-f * 1.4} opacity={0.6 + 0.4 * Math.sin(f * 0.1 + k)} />
+            ))}
+          </g>
+        )}
+        {/* Mecanismo de relojería: flechas y engranaje central */}
+        <g transform={`translate(${BC.x},${BC.y})`} opacity={clamp01(arrowsOn.g)}>
+          {[0, 1, 2, 3].map((k) => {
+            const a0 = 8 + k * 90 + rotDeg;
+            const rad = 372;
+            const p0: Pt = [Math.cos((a0 * Math.PI) / 180) * rad, Math.sin((a0 * Math.PI) / 180) * rad];
+            const p1: Pt = [Math.cos(((a0 + 60) * Math.PI) / 180) * rad, Math.sin(((a0 + 60) * Math.PI) / 180) * rad];
+            const ea = ((a0 + 60) * Math.PI) / 180;
+            const head = `${(Math.cos(ea + 0.22) * (rad + 22)).toFixed(1)},${(Math.sin(ea + 0.22) * (rad + 22)).toFixed(1)} ${(Math.cos(ea + 0.22) * (rad - 22)).toFixed(1)},${(Math.sin(ea + 0.22) * (rad - 22)).toFixed(1)} ${(Math.cos(ea + 0.46) * rad).toFixed(1)},${(Math.sin(ea + 0.46) * rad).toFixed(1)}`;
+            const d = `M${p0[0]},${p0[1]} A${rad},${rad} 0 0 1 ${p1[0]},${p1[1]}`;
+            return (
+              <g key={k}>
+                <path d={d} stroke={C.ink} strokeWidth={24} fill="none" strokeLinecap="round" />
+                <path d={d} stroke={C.gold} strokeWidth={13} fill="none" strokeLinecap="round" />
+                <polygon points={head} fill={C.gold} stroke={C.ink} strokeWidth={5} strokeLinejoin="round" />
+              </g>
+            );
+          })}
+          <g transform={`rotate(${rotDeg * 2})`}>
+            <path d={gearPath(64, 12, 16)} fill={C.gold} stroke={C.ink} strokeWidth={6} strokeLinejoin="round" />
+            <circle r={22} fill={C.paper} stroke={C.ink} strokeWidth={5} />
+          </g>
+        </g>
+        {/* Etiquetas de cada parcela */}
+        {P.map(([px, py], i) => (
+          <g key={i} opacity={clamp01(sq[i].g)}>
+            <text x={px} y={py + 176} textAnchor="middle" fontFamily={HAND} fontWeight={700} fontSize={40} fill={C.ink}>{PLOT_NAME[i]}</text>
+            <path d={`M${px - 54},${py + 186} Q${px},${py + 178} ${px + 54},${py + 187}`} stroke={PLOT_COL[i]} strokeWidth={7} fill="none" strokeLinecap="round" />
+          </g>
+        ))}
+      </Layer>
+
+      {/* Orbes de bio-fertilizante brotando de las raíces del trébol */}
+      {sq[3].g > 0.3 &&
+        Array.from({ length: 6 }, (_, k) => {
+          const p = ((f - PLOT_START[3] + k * 22) % 120) / 120;
+          return (
+            <Glow key={k} src={VFX.light} x={x3p + Math.sin(k * 2.1) * (40 + p * 110)} y={y3p + 170 - p * 230}
+              size={50 + 70 * Math.sin(p * Math.PI)} color={C.aura} opacity={0.9 * Math.sin(p * Math.PI)} />
+          );
+        })}
+
+      {/* Pluma */}
+      {penOp > 0 && (
+        <Layer style={{ opacity: penOp }}>
+          <g transform={`translate(${penX},${penY}) rotate(24)`}>
+            <path d="M0,0 L-7,-34 L7,-34Z" fill={C.ink} />
+            <path d="M-6,-30 Q-52,-176 34,-340 Q76,-190 10,-48Z" fill={C.paper} stroke={C.ink} strokeWidth={5} strokeLinejoin="round" />
+            <path d="M0,-34 Q6,-170 30,-330" stroke={C.ink} strokeWidth={4} fill="none" />
+            {[-80, -130, -180, -230, -280].map((yy, k) => (
+              <path key={k} d={`M${4 + k * 4},${yy} l-${26 - k * 2},-12 M${4 + k * 4},${yy} l${24 - k * 2},-10`} stroke={C.ink} strokeWidth={2.5} fill="none" opacity={0.6} />
+            ))}
+          </g>
+        </Layer>
+      )}
+
+      {/* Capa 5: centellas doradas */}
+      {f > 200 &&
+        Array.from({ length: 12 }, (_, i) => (
+          <Glow key={i} src={VFX.star} x={80 + rand(i) * 920} y={(560 + rand(i + 4) * 800 - (f - 200) * (0.3 + rand(i + 9) * 0.4) + 3000) % 1000 + 460}
+            size={26 + rand(i + 7) * 30} color={C.gold} opacity={0.45 + 0.4 * Math.sin(f * 0.1 + i)} rot={f * 0.7 + i * 30} />
+        ))}
+
+      {/* Títulos */}
+      <Ink text="SISTEMA NORFOLK" x={540} y={300} size={92} frame={f} serif halo={C.ink} color={C.paper} seed={1}
+        scale={Math.max(0.001, pop(f, 6, fps))} />
+      <Ink text="4 parcelas · 1 rotación · cero barbecho" x={540} y={392} size={42} frame={f} halo={C.ink} color={C.paper} seed={2}
+        opacity={prog(f, 26, 40)} />
+      <Ink text={`Año ${year}`} x={540} y={1530} size={84} frame={f} serif halo={C.ink} color={C.paper} seed={3}
+        scale={Math.max(0.001, pop(f, f >= 980 ? 980 : f >= 900 ? 900 : f >= 820 ? 820 : 760, fps))} opacity={prog(f, 760, 770)} />
+      <Ink text="Trigo → Nabo → Cebada → Trébol" x={540} y={1620} size={44} frame={f} halo={C.ink} color={C.gold} seed={4}
+        opacity={prog(f, 790, 810)} />
+    </>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESCENA 4 — EL COMBO GANADERO & INVIERNO (frames 2160–3000)
+   ═══════════════════════════════════════════════════════════════════════════ */
+export const Scene4LivestockWinterBoom: React.FC<SceneProps> = ({ localFrame: f, fps }) => {
+  const bs = Math.floor(f / 3) % 3;
+  const winter = prog(f, 380, 470);
+  const skyTop = interpolateColors(f, [380, 470], ["#9BD3E0", C.hoodie]);
+  const skyBot = interpolateColors(f, [380, 470], [C.paper, C.pale]);
+  const gnd = interpolateColors(f, [380, 470], [C.forest, "#DCE6EA"]);
+  const gnd2 = interpolateColors(f, [380, 470], [C.clover, C.pale]);
+
+  // Cultivos y ganado
+  const cowEat = prog(f, 110, 300);
+  const sheepEat = prog(f, 150, 300);
+  const cowX0 = interpolate(f, [0, 100], [-340, 215], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const cowX = f < 430 ? cowX0 : lerp(215, 800, easeInOut(prog(f, 430, 490)));
+  const sheepX0 = interpolate(f, [20, 140], [1420, 480], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const sheepX = f < 430 ? sheepX0 : lerp(480, 790, easeInOut(prog(f, 430, 490)));
+  const cowRunning = f < 100 || f >= 430;
+  const sheepRunning = f < 140 || f >= 430;
+  const bounce = (k: number) => Math.abs(Math.sin(f * 0.42 + k));
+  const chew = f >= 105 && f < 310 ? Math.sin(f * 0.9) : 0;
+  const happy = f >= 310 && f < 430 ? Math.abs(Math.sin((f - 310) * 0.12)) : 0;
+  const fadeAnimals = 1 - prog(f, 470, 500);
+  const animalScale = 1 - 0.3 * prog(f, 430, 490);
+
+  const cowGrow = 1 + 0.3 * easeOut(cowEat);
+  const sheepGrow = 1 + 0.3 * easeOut(sheepEat);
+
+  // Nobles
+  const nobX = f < 440 ? -420 : f < 540 ? lerp(-420, 250, easeOut(prog(f, 440, 540))) : 250;
+  const walking = f >= 440 && f < 540;
+  const shiver = f >= 540 ? Math.sin(f * 2.3) * 3.5 : 0;
+
+  // Estudiante pícaro en el granero
+  const smug = springSquash(f, 520, fps);
+
+  // Moneda gigante
+  const cT = prog(f, 700, 840);
+  const cs = 0.25 + 7.5 * easeIn(cT);
+
+  return (
+    <>
+      <PaperBase />
+      <Layer>
+        <defs>
+          <linearGradient id="s4-sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor={skyTop} />
+            <stop offset="1" stopColor={skyBot} />
+          </linearGradient>
+        </defs>
+        <rect width={W} height={H} fill="url(#s4-sky)" />
+        <path d={blob(840, 330, 120, 120, 5 + bs, 12, 0.04)} fill={C.gold} opacity={0.4 * (1 - winter)} />
+        <path d={blob(220, 1130, 560, 200, 30 + bs, 14, 0.08)} fill={gnd} opacity={0.65} />
+        <path d={blob(900, 1150, 520, 180, 31 + bs, 14, 0.08)} fill={gnd} opacity={0.5} />
+        <path d={blob(540, 1700, 1200, 620, 32 + bs, 20, 0.05)} fill={gnd} />
+        <path d={blob(540, 1640, 1000, 480, 33 + bs, 20, 0.06)} fill={gnd2} opacity={0.65} />
+        {Array.from({ length: 6 }, (_, i) => (
+          <path key={i} d={`M-40,${1440 + i * 85} Q540,${1410 + i * 85 + (i % 2) * 24} 1120,${1440 + i * 85}`} stroke={C.ink} strokeWidth={3} fill="none" opacity={0.2 * (1 - winter * 0.7)} />
+        ))}
+        {/* nieve acumulada */}
+        <path d={blob(300, 1560, 440, 120, 40 + bs, 12, 0.1)} fill="#FFFFFF" opacity={winter * 0.9} />
+        <path d={blob(880, 1700, 460, 140, 41 + bs, 12, 0.1)} fill="#FFFFFF" opacity={winter * 0.9} />
+      </Layer>
+
+      {/* Castillo congelado (capa 2) */}
+      <Sprite src={IMG.castle} frame={f} x={300} y={1150} w={640} h={600} opacity={0.55 + 0.45 * winter}
+        filter={`hue-rotate(${-20 * winter}deg) saturate(${1 - 0.4 * winter}) brightness(${1 + 0.1 * winter})`} seed={2} />
+
+      {/* Granero del protagonista */}
+      <Layer>
+        <g transform="translate(800,1400)">
+          <path d="M-210,0 L-210,-170 L-120,-290 L120,-290 L210,-170 L210,0Z" fill={C.mud} stroke={C.ink} strokeWidth={7} strokeLinejoin="round" />
+          {Array.from({ length: 9 }, (_, i) => (
+            <path key={i} d={`M${-168 + i * 42},-8 L${-168 + i * 42},-176`} stroke={C.ink} strokeWidth={3} opacity={0.3} />
+          ))}
+          <path d="M-232,-165 L-126,-312 L126,-312 L232,-165" stroke={C.ink} strokeWidth={30} fill="none" strokeLinejoin="round" strokeLinecap="round" />
+          <path d="M-232,-165 L-126,-312 L126,-312 L232,-165" stroke={C.forest} strokeWidth={20} fill="none" strokeLinejoin="round" strokeLinecap="round" />
+          <path d="M-236,-170 L-130,-316 L130,-316 L236,-170 Q150,-300 0,-300 Q-150,-300 -236,-170Z" fill="#FFFFFF" stroke={C.ink} strokeWidth={4} opacity={winter} />
+          <path d="M-78,0 L-78,-150 L78,-150 L78,0Z" fill="#1b2410" stroke={C.ink} strokeWidth={6} />
+          <path d="M-78,0 L0,-150 M78,0 L0,-150 M-78,-150 L0,0 M78,-150 L0,0" stroke={C.parch} strokeWidth={4} opacity={0.55} />
+          <text x={0} y={-215} textAnchor="middle" fontFamily={HAND} fontWeight={700} fontSize={44} fill={C.paper} stroke={C.ink} strokeWidth={9} paintOrder="stroke">GRANERO</text>
+        </g>
+      </Layer>
+
+      {/* Cultivos (capa 3) que el ganado devora */}
+      {[0, 1].map((i) => (
+        <Sprite key={`t${i}`} src={IMG.turnip} frame={f} x={[130, 260][i]} y={1420} w={150} h={170}
+          sx={Math.max(0.12, 1 - 0.88 * cowEat) * pop(f, 5 + i * 8, fps)} sy={Math.max(0.12, 1 - 0.88 * cowEat) * pop(f, 5 + i * 8, fps)} opacity={1 - prog(f, 300, 320)} seed={10 + i} />
+      ))}
+      {[0, 1].map((i) => (
+        <Sprite key={`c${i}`} src={IMG.clover} frame={f} x={[390, 510][i]} y={1420} w={160} h={150}
+          sx={Math.max(0.12, 1 - 0.88 * sheepEat) * pop(f, 12 + i * 8, fps)} sy={Math.max(0.12, 1 - 0.88 * sheepEat) * pop(f, 12 + i * 8, fps)} opacity={1 - prog(f, 300, 320)} seed={14 + i} />
+      ))}
+
+      {/* Capa 4: ganado feliz */}
+      <Sprite src={IMG.cow} frame={f} x={cowX} y={1500 - (cowRunning ? bounce(0) * 34 : happy * 40)} w={400} h={360}
+        flip={COW_FACES_RIGHT} rot={chew * 2.5} opacity={fadeAnimals}
+        sx={(cowRunning ? 1.08 - 0.14 * bounce(0) : 1 + 0.02 * chew) * cowGrow * animalScale}
+        sy={(cowRunning ? 0.92 + 0.16 * bounce(0) : 1 - 0.02 * chew) * cowGrow * animalScale} seed={20} />
+      <Sprite src={IMG.sheep} frame={f} x={sheepX} y={1490 - (sheepRunning ? bounce(1.5) * 34 : happy * 44) - Math.sin(f * 0.05) * 6} w={340} h={320}
+        flip={!SHEEP_FACES_RIGHT} rot={-chew * 2.5} opacity={fadeAnimals}
+        sx={(sheepRunning ? 1.08 - 0.14 * bounce(1.5) : 1 - 0.02 * chew) * sheepGrow * animalScale}
+        sy={(sheepRunning ? 0.92 + 0.16 * bounce(1.5) : 1 + 0.02 * chew) * sheepGrow * animalScale} seed={21} />
+
+      {/* Estudiante pícaro vendiendo comida */}
+      {f >= 520 && (
+        <Sprite src={IMG.studentSmug} frame={f} x={800} y={1400} w={230} h={340} sx={smug.sx} sy={smug.sy} rot={Math.sin(f * 0.05) * 1.5} seed={22} />
+      )}
+
+      {/* Nobles tiritando */}
+      <Sprite src={IMG.nobles} frame={f} x={nobX + shiver} y={1690 - (walking ? bounce(0.8) * 22 : 0)} w={640} h={560}
+        rot={f >= 540 ? Math.sin(f * 2.9) * 1.3 : 0} sy={walking ? 0.96 + 0.06 * bounce(0.8) : 1} seed={23} />
+      {f >= 560 &&
+        [0, 1, 2].map((k) => {
+          const p = ((f + k * 30) % 90) / 90;
+          return <Glow key={k} src={VFX.smoke} x={nobX - 150 + k * 150} y={1250 - p * 80} size={46 + p * 50} color="#C9D6DF" opacity={0.7 * Math.sin(p * Math.PI) * winter} rot={p * 60} />;
+        })}
+
+      <Layer>
+        {/* Monedas de los nobles volando al granero */}
+        {Array.from({ length: 6 }, (_, k) => {
+          const s = 570 + k * 18;
+          const t = prog(f, s, s + 50);
+          if (t <= 0 || t >= 1) return null;
+          const x = lerp(400, 790, t);
+          const y = lerp(1420, 1300, t) - Math.sin(t * Math.PI) * 220;
+          return <Coin key={k} x={x} y={y} r={30} spin={f * 0.35 + k} />;
+        })}
+        {/* Abono mágico: brotes donde cae cada destello */}
+        {Array.from({ length: 18 }, (_, i) => {
+          const s = 150 + i * 14;
+          const x = (i % 2 === 0 ? 120 : 560) + rand(i) * 70;
+          const landT = Math.sqrt(2 * (1560 - 1380) / 0.5);
+          return <Sprout key={i} x={x} y={1560 + (i % 3) * 6} grow={pop(f, s + landT, fps) * (1 - winter)} frame={f} seed={i + 40} scale={0.7} c1={C.clover} c2={C.aura} />;
+        })}
+      </Layer>
+
+      {/* Destellos dorados cayendo como abono */}
+      {Array.from({ length: 18 }, (_, i) => {
+        const s = 150 + i * 14;
+        const t = f - s;
+        if (t < 0 || t > 160) return null;
+        const x = (i % 2 === 0 ? 120 : 560) + rand(i) * 70;
+        const y = Math.min(1560, 1380 + 0.25 * t * t);
+        const onG = y >= 1560;
+        return <Glow key={i} src={VFX.star} x={x + Math.sin(t * 0.1) * 8} y={y} size={onG ? 44 : 58} color={C.gold}
+          opacity={onG ? Math.max(0, 1 - (t - 27) / 50) : 1} rot={t * 6} />;
+      })}
+
+      {/* Monedas al llegar */}
+      {Array.from({ length: 6 }, (_, k) => {
+        const s = 570 + k * 18 + 50;
+        const t = f - s;
+        if (t < 0 || t > 24) return null;
+        return <Glow key={k} src={VFX.star} x={790} y={1300} size={90 * (1 - t / 24) + 20} color={C.gold} opacity={1 - t / 24} rot={t * 12} />;
+      })}
+
+      {/* Nieve cayendo */}
+      {Array.from({ length: 70 }, (_, i) => {
+        const sp = 4 + rand(i + 1) * 6;
+        const y = (rand(i + 50) * H + f * sp) % H;
+        const x = (rand(i) * W + Math.sin(f * 0.03 + i) * 40 + W) % W;
+        const r = 4 + rand(i + 20) * 9;
+        return (
+          <svg key={i} style={{ position: "absolute", left: x - r - 2, top: y - r - 2, overflow: "visible", opacity: winter }} width={2 * r + 4} height={2 * r + 4}>
+            <circle cx={r + 2} cy={r + 2} r={r} fill="#FFFFFF" stroke={C.hoodie} strokeWidth={1.6} />
+          </svg>
+        );
+      })}
+
+      {/* Rótulos */}
+      <Ink text="¡Ñam ñam! Abono gratis" x={540} y={380} size={62} frame={f} seed={5} rot={-3} opacity={prog(f, 130, 145) * (1 - prog(f, 330, 345))} />
+      <Ink text="Invierno: todos tienen hambre..." x={540} y={420} size={60} frame={f} seed={6} rot={2} color={C.ink}
+        opacity={prog(f, 470, 490) * (1 - prog(f, 680, 700))} />
+      <Ink text="Menos mal que el granero está lleno" x={540} y={500} size={44} frame={f} seed={7} rot={-1}
+        opacity={prog(f, 560, 580) * (1 - prog(f, 680, 700))} />
+
+      {/* Moneda dorada gigante hacia la cámara */}
+      {f >= 700 && (
+        <>
+          <Glow src={VFX.star} x={540} y={960} size={900 * (0.4 + cT)} color={C.gold} opacity={0.5 * prog(f, 710, 740)} rot={f * 2} />
+          <Layer>
+            <g transform={`translate(540,960) scale(${cs})`}>
+              <Coin x={0} y={0} r={150} spin={(f - 700) * 0.28} />
+            </g>
+            <rect width={W} height={H} fill={C.gold} opacity={prog(f, 815, 840)} />
+          </Layer>
+        </>
+      )}
+    </>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESCENA 5 — CONCLUSIÓN Y LOOP INFINITO (frames 3000–3600)
+   ═══════════════════════════════════════════════════════════════════════════ */
+export const Scene5TycoonLoop: React.FC<SceneProps & { blink: number }> = ({ localFrame: f, fps, blink }) => {
+  const bs = Math.floor(f / 3) % 3;
+  const hero = springSquash(f, 8, fps);
+  const swap = pop(f, 200, fps);
+  const slurp = f >= 200;
+  const dragonIn = pop(f, 70, fps);
+  const dragonX = lerp(1400, 860, Math.min(1, dragonIn));
+  const leafRot = Math.sin(f * 0.18) * 26;
+  const watchT = springSquash(f, 340, fps);
+  const rollT = prog(f, 480, 598);
+  const R = 1250 * Math.pow(1 - rollT, 1.6);
+  const rotWipe = easeIn(rollT) * 900;
+  const minuteA = f < 470 ? (f - 340) * 14 : 0;
+  const speedLines = f >= 340 && f < 480;
+
+  const sackBack: Pt[] = [[330, 1240], [750, 1240], [190, 1400], [880, 1400]];
+  const sackFront: Pt[] = [[170, 1690], [420, 1720], [700, 1720], [920, 1690]];
+
+  const content = (
+    <>
+      <PaperBase color={C.paper} />
+      <Layer>
+        <defs>
+          <linearGradient id="s5-wall" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#FFE08A" />
+            <stop offset="1" stopColor={C.paper} />
+          </linearGradient>
+          <linearGradient id="s5-view" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#FFF1C2" />
+            <stop offset="1" stopColor={C.aura} />
+          </linearGradient>
+        </defs>
+        <rect width={W} height={H} fill="url(#s5-wall)" />
+        {/* Capa 2: ventanal con campos de trigo */}
+        <path d="M240,1180 L240,600 Q540,230 840,600 L840,1180Z" fill="url(#s5-view)" stroke={C.ink} strokeWidth={8} />
+        <path d={blob(540, 640, 70, 70, 3 + bs, 12, 0.04)} fill={C.gold} opacity={0.9} />
+        {[0, 1, 2, 3].map((i) => (
+          <path key={i} d={`M240,${900 + i * 70} Q540,${860 + i * 70 + (i % 2) * 20} 840,${900 + i * 70}`} stroke={i % 2 ? C.gold : C.parch} strokeWidth={34} fill="none" opacity={0.7} />
+        ))}
+        <path d="M540,330 L540,1180 M240,820 L840,820" stroke={C.ink} strokeWidth={6} opacity={0.6} />
+        {/* Cortinas de terciopelo */}
+        <path d="M0,0 L310,0 Q230,500 280,980 Q120,1100 0,1180Z" fill={C.velvet} stroke={C.ink} strokeWidth={6} />
+        <path d={`M${W},0 L${W - 310},0 Q${W - 230},500 ${W - 280},980 Q${W - 120},1100 ${W},1180Z`} fill={C.velvet} stroke={C.ink} strokeWidth={6} />
+        {[70, 140, 210].map((x, i) => (
+          <React.Fragment key={i}>
+            <path d={`M${x},0 Q${x - 20 + Math.sin(f * 0.04 + i) * 4},560 ${x + 20},1100`} stroke="#6d1121" strokeWidth={8} fill="none" opacity={0.7} />
+            <path d={`M${W - x},0 Q${W - x + 20 - Math.sin(f * 0.04 + i) * 4},560 ${W - x - 20},1100`} stroke="#6d1121" strokeWidth={8} fill="none" opacity={0.7} />
+          </React.Fragment>
+        ))}
+        <path d="M270,990 Q250,1040 270,1090 M810,990 Q830,1040 810,1090" stroke={C.gold} strokeWidth={10} fill="none" strokeLinecap="round" />
+        <circle cx={270} cy={1100} r={26} fill={C.gold} stroke={C.ink} strokeWidth={5} />
+        <circle cx={810} cy={1100} r={26} fill={C.gold} stroke={C.ink} strokeWidth={5} />
+        {/* Suelo */}
+        <path d={blob(540, 1820, 1000, 380, 50 + bs, 18, 0.05)} fill="#7a1424" stroke={C.ink} strokeWidth={5} />
+        <path d={blob(540, 1830, 900, 320, 51 + bs, 18, 0.05)} fill="none" stroke={C.gold} strokeWidth={8} strokeDasharray="22 14" />
+        {/* Sacos de trigo: respaldo del trono */}
+        {sackBack.map(([x, y], i) => {
+          const s = springSquash(f, 2 + i * 5, fps);
+          return <Sack key={i} x={x} y={y} s={0.95} sx={s.sx} sy={s.sy} rot={[-6, 6, -4, 5][i]} />;
+        })}
+      </Layer>
+
+      {/* Capa 4: magnate y mini-dragón */}
+      <Sprite
+        src={slurp ? IMG.studentSlurping : IMG.studentTycoon} frame={f} x={540} y={1440} w={620} h={900}
+        sx={hero.sx * (slurp ? 1 + 0.08 * (1 - swap) : 1)} sy={hero.sy * (slurp ? 1 - 0.08 * (1 - swap) : 1) * (1 - blink * 0.01)}
+        rot={f >= 340 ? -3 * Math.min(1, watchT.g) : Math.sin(f * 0.04) * 0.8} seed={30}
+      />
+      <Sprite src={IMG.dragon} frame={f} x={dragonX} y={1360 + Math.sin(f * 0.1) * 16} w={340} h={380}
+        rot={Math.sin(f * 0.1) * 3} sy={1 + 0.03 * Math.sin(f * 0.2)} sx={1 - 0.03 * Math.sin(f * 0.2)} seed={31} />
+      <Layer>
+        {/* Hoja de palma gigante */}
+        {dragonIn > 0.6 && (
+          <g transform={`translate(${dragonX - 110},1180) rotate(${-30 + leafRot})`}>
+            <path d="M0,0 L0,-300" stroke={C.ink} strokeWidth={14} strokeLinecap="round" />
+            <path d="M0,0 L0,-300" stroke={C.forest} strokeWidth={7} strokeLinecap="round" />
+            {Array.from({ length: 7 }, (_, k) => {
+              const y = -70 - k * 32;
+              const len = 120 - k * 8;
+              return (
+                <g key={k}>
+                  <path d={`M0,${y} Q${-len * 0.6},${y - 40} ${-len},${y - 10}`} stroke={C.ink} strokeWidth={22} fill="none" strokeLinecap="round" />
+                  <path d={`M0,${y} Q${len * 0.6},${y - 40} ${len},${y - 10}`} stroke={C.ink} strokeWidth={22} fill="none" strokeLinecap="round" />
+                  <path d={`M0,${y} Q${-len * 0.6},${y - 40} ${-len},${y - 10}`} stroke={C.clover} strokeWidth={14} fill="none" strokeLinecap="round" />
+                  <path d={`M0,${y} Q${len * 0.6},${y - 40} ${len},${y - 10}`} stroke={C.clover} strokeWidth={14} fill="none" strokeLinecap="round" />
+                </g>
+              );
+            })}
+          </g>
+        )}
+        {/* Aire del abanico */}
+        {dragonIn > 0.8 && [0, 1, 2].map((k) => {
+          const p = ((f * 0.03 + k / 3) % 1);
+          return <path key={k} d={`M${dragonX - 200 - p * 160},${1100 + k * 40} q-40,-16 -80,0`} stroke={C.hoodie} strokeWidth={5} fill="none" strokeLinecap="round" opacity={0.7 * Math.sin(p * Math.PI)} />;
+        })}
+        {/* Sacos del primer plano */}
+        {sackFront.map(([x, y], i) => {
+          const s = springSquash(f, 10 + i * 6, fps);
+          return <Sack key={i} x={x} y={y} s={1.05} sx={s.sx} sy={s.sy} rot={[5, -4, 3, -6][i]} color={i % 2 ? C.parch : "#E9B872"} />;
+        })}
+      </Layer>
+      {[0, 1].map((i) => (
+        <Sprite key={i} src={IMG.wheat} frame={f} x={[170, 920][i]} y={[1560, 1560][i]} w={130} h={200} rot={[-10, 12][i] + Math.sin(f * 0.06 + i) * 3} seed={32 + i} />
+      ))}
+
+      {/* Capa 5: destellos dorados */}
+      {Array.from({ length: 10 }, (_, i) => (
+        <Glow key={i} src={VFX.star} x={80 + rand(i) * 920} y={300 + rand(i + 5) * 1200 + Math.sin(f * 0.04 + i) * 24}
+          size={24 + rand(i + 7) * 32} color={C.gold} opacity={0.4 + 0.4 * Math.sin(f * 0.1 + i * 2)} rot={f * 0.8 + i * 30} />
+      ))}
+      <Ink text="¡SLUUURP!" x={780} y={790} size={78} frame={f} color={C.barley} rot={5} seed={4}
+        scale={f >= 204 && f < 270 ? springSquash(f, 204, fps).sy : 0} opacity={1 - prog(f, 255, 270)} />
+
+      {/* Primer plano del reloj de pulsera */}
+      {f >= 340 && (
+        <>
+          <div style={{ position: "absolute", inset: 0, backgroundColor: C.ink, opacity: 0.5 * clamp01(watchT.g) * (1 - prog(f, 470, 490)) }} />
+          <Layer>
+            {speedLines &&
+              Array.from({ length: 24 }, (_, k) => {
+                const a = (k / 24) * TWO_PI + f * 0.01;
+                return <path key={k} d={`M${540 + Math.cos(a) * 360},${960 + Math.sin(a) * 360} L${540 + Math.cos(a) * 920},${960 + Math.sin(a) * 920}`} stroke={C.paper} strokeWidth={5} opacity={0.35} />;
+              })}
+            <g transform={`translate(540,960) scale(${watchT.sx},${watchT.sy})`}>
+              <path d="M-90,-200 L-70,-520 L70,-520 L90,-200Z M-90,200 L-70,520 L70,520 L90,200Z" fill={C.velvet} stroke={C.ink} strokeWidth={8} strokeLinejoin="round" />
+              <circle r={238} fill={C.gold} stroke={C.ink} strokeWidth={10} />
+              <circle r={204} fill={C.paper} stroke={C.ink} strokeWidth={7} />
+              {Array.from({ length: 12 }, (_, k) => {
+                const a = (k / 12) * TWO_PI - Math.PI / 2;
+                return <path key={k} d={`M${Math.cos(a) * 172},${Math.sin(a) * 172} L${Math.cos(a) * 194},${Math.sin(a) * 194}`} stroke={C.ink} strokeWidth={k % 3 === 0 ? 9 : 4} strokeLinecap="round" />;
+              })}
+              <g transform={`rotate(${minuteA / 12})`}>
+                <path d="M0,10 L0,-100" stroke={C.ink} strokeWidth={14} strokeLinecap="round" />
+              </g>
+              <g transform={`rotate(${minuteA})`}>
+                <path d="M0,16 L0,-158" stroke={C.red} strokeWidth={8} strokeLinecap="round" />
+              </g>
+              <circle r={13} fill={C.ink} />
+            </g>
+          </Layer>
+          <Ink text="…y otra vez desde el principio" x={540} y={1530} size={52} frame={f} seed={9} serif rot={-2}
+            opacity={prog(f, 380, 400) * (1 - prog(f, 470, 485))} />
+        </>
+      )}
+      {/* El flash de la moneda de la escena anterior se disuelve */}
+      <div style={{ position: "absolute", inset: 0, backgroundColor: C.gold, opacity: 1 - prog(f, 0, 26), pointerEvents: "none" }} />
+    </>
+  );
+
+  return (
+    <>
+      {/* Frame 0 asomando por debajo del remolino → loop perfecto */}
+      {rollT > 0 && (
+        <div style={{ position: "absolute", inset: 0 }}>
+          <Scene1IsekaiHook localFrame={0} fps={fps} blink={0} />
+        </div>
+      )}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          transformOrigin: "540px 960px",
+          transform: `rotate(${rotWipe}deg)`,
+          clipPath: rollT > 0 ? `circle(${R}px at 540px 960px)` : undefined,
+        }}
+      >
+        {content}
+      </div>
+      {rollT > 0 && R > 6 && (
+        <Layer>
+          <g transform={`translate(540,960) rotate(${rotWipe})`}>
+            <circle r={R} fill="none" stroke={C.ink} strokeWidth={46} />
+            <circle r={R} fill="none" stroke={C.parch} strokeWidth={36} />
+            <circle r={R - 6} fill="none" stroke={C.mud} strokeWidth={5} strokeDasharray="30 18" />
+            {[0, 1, 2].map((arm) => {
+              const pts: string[] = [];
+              for (let k = 0; k <= 30; k++) {
+                const t = k / 30;
+                const rr = R * (1 + 0.55 * t);
+                const a = (arm * TWO_PI) / 3 + t * 2.4;
+                pts.push(`${(Math.cos(a) * rr).toFixed(1)},${(Math.sin(a) * rr).toFixed(1)}`);
+              }
+              return (
+                <g key={arm}>
+                  <path d={`M${pts.join(" L")}`} stroke={C.ink} strokeWidth={30 * (1 - rollT * 0.5)} fill="none" strokeLinecap="round" />
+                  <path d={`M${pts.join(" L")}`} stroke={C.parch} strokeWidth={20 * (1 - rollT * 0.5)} fill="none" strokeLinecap="round" opacity={0.95} />
+                </g>
+              );
+            })}
+          </g>
+        </Layer>
+      )}
+    </>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TRANSICIÓN ENTRE ESCENAS (barrido tipo "pasar de página")
+   ═══════════════════════════════════════════════════════════════════════════ */
+const Shell: React.FC<{ f: number; enter: boolean; children: React.ReactNode }> = ({ f, enter, children }) => {
+  const t = enter ? easeOut(prog(f, 0, 14)) : 1;
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        transform: `translateX(${(1 - t) * W * 0.55}px)`,
+        filter: t < 1 ? `blur(${(1 - t) * 10}px)` : undefined,
+        opacity: 0.4 + 0.6 * t,
+      }}
+    >
+      {children}
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPONENTE RAÍZ
+   ═══════════════════════════════════════════════════════════════════════════ */
+export interface World2DProps {
+  currentScene?: number;
+  sceneLocalFrame?: number;
+  absoluteTimeline?: boolean;
+}
+
+export const World2D: React.FC<World2DProps> = ({
+  currentScene: propScene,
+  sceneLocalFrame: propLocalFrame,
+  absoluteTimeline = true,
+}) => {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
 
-  // Modulador de Line-Boil para acabado artesanal de lápiz/pluma (20 fps)
-  const step = Math.floor(frame / 3);
-  const boilX = Math.sin(step * 17.3) * 1.5;
-  const boilY = Math.cos(step * 23.7) * 1.5;
-  const boilRot = ((step % 3) - 1) * 0.3;
+  // Line-boil global (15–20 fps) para el acabado artesanal de lápiz/pluma
+  const stepFrame = Math.floor(frame / 3);
+  const boilX = Math.sin(stepFrame * 17.3) * 1.8;
+  const boilY = Math.cos(stepFrame * 23.7) * 1.8;
+  const boilRot = ((stepFrame % 3) - 1) * 0.35;
 
-  // Parpadeo periódico (cada 90 frames, dura 6 frames)
+  // Parpadeo periódico (cada 90 frames, dura 6)
   const blinkCycle = frame % 90;
-  const blink = interpolate(blinkCycle, [0, 3, 6], [0, 1, 0], CL);
+  const blink = interpolate(blinkCycle, [0, 3, 6], [0, 1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const calculatedScene = useMemo(() => {
+    if (frame < 420) return 0;
+    if (frame < 1080) return 1;
+    if (frame < 2160) return 2;
+    if (frame < 3000) return 3;
+    return 4;
+  }, [frame]);
+
+  const activeScene = propScene !== undefined ? propScene : absoluteTimeline ? calculatedScene : 0;
+
+  const localFrame = useMemo(() => {
+    if (propLocalFrame !== undefined) return propLocalFrame;
+    if (!absoluteTimeline) return frame;
+    return frame - SCENE_START[activeScene];
+  }, [frame, activeScene, propLocalFrame, absoluteTimeline]);
 
   return (
-    <Clock.Provider value={{ gf: frame, step }}>
+    <div
+      style={{
+        width,
+        height,
+        backgroundColor: "#FEFAE0",
+        position: "relative",
+        overflow: "hidden",
+        fontFamily: "'Inter', sans-serif",
+      }}
+    >
+      {/* CONTENEDOR CON JITTER ORGÁNICO LINE-BOIL (el papel va dentro para que multiply funcione) */}
       <div
         style={{
-          width,
-          height,
-          backgroundColor: C.paper,
-          position: "relative",
-          overflow: "hidden",
+          position: "absolute",
+          inset: -8,
+          width: width + 16,
+          height: height + 16,
+          transform: `translate(${boilX}px, ${boilY}px) rotate(${boilRot}deg)`,
+          transformOrigin: "center center",
         }}
       >
-        {/* DEFS GLOBALES */}
-        <Defs step={step} />
-
-        {/* CAPA 1: Textura de Papel Acuarela y Grano */}
-        <svg
-          style={{
-            position: "absolute",
-            width: "100%",
-            height: "100%",
-            pointerEvents: "none",
-            zIndex: 60,
-            opacity: 0.12,
-            mixBlendMode: "multiply",
-          }}
-        >
-          <filter id="paper-noise">
-            <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves={4} result="noise" />
-            <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.8 0" />
-          </filter>
-          <rect width="100%" height="100%" filter="url(#paper-noise)" />
-        </svg>
-
-        {/* RENDERIZADO VECTORIAL SVG CON LINE-BOIL */}
-        <svg
-          viewBox={`0 0 ${W} ${H}`}
-          style={{
-            width: "100%",
-            height: "100%",
-            transform: `translate(${boilX}px, ${boilY}px) rotate(${boilRot}deg)`,
-            transformOrigin: "center center",
-          }}
-        >
-          {currentScene === 0 && <Scene1IsekaiHook localFrame={sceneLocalFrame} blink={blink} />}
-          {currentScene === 1 && <Scene2MedievalInefficiency localFrame={sceneLocalFrame} blink={blink} />}
-          {currentScene === 2 && <Scene3NorfolkFourFields localFrame={sceneLocalFrame} />}
-          {currentScene === 3 && <Scene4LivestockWinterBoom localFrame={sceneLocalFrame} blink={blink} />}
-          {currentScene === 4 && <Scene5TycoonLoop localFrame={sceneLocalFrame} blink={blink} />}
-        </svg>
-
-        {/* SFX TÁCTILES SINCRONIZADOS A BEATS CLAVE */}
-        {frame === 10 && (
-          <Sequence from={10} durationInFrames={60}>
-            <Audio src={staticFile("assets/audio/sfx/whooshes/whoosh_cinematic.wav")} volume={0.8} />
-          </Sequence>
-        )}
-        {frame === 150 && (
-          <Sequence from={150} durationInFrames={60}>
-            <Audio src={staticFile("assets/audio/sfx/impacts/sub_impact_thud.wav")} volume={0.9} />
-          </Sequence>
-        )}
-        {frame === 230 && (
-          <Sequence from={230} durationInFrames={60}>
-            <Audio src={staticFile("assets/audio/sfx/ui/switch1.wav")} volume={0.7} />
-          </Sequence>
-        )}
-        {frame === 430 && (
-          <Sequence from={430} durationInFrames={90}>
-            <Audio src={staticFile("assets/audio/sfx/ambience/tension_riser.wav")} volume={0.5} />
-          </Sequence>
-        )}
-        {frame === 780 && (
-          <Sequence from={780} durationInFrames={40}>
-            <Audio src={staticFile("assets/audio/sfx/ui/mouseclick1.wav")} volume={0.8} />
-          </Sequence>
-        )}
-        {frame === 1090 && (
-          <Sequence from={1090} durationInFrames={40}>
-            <Audio src={staticFile("assets/audio/sfx/ui/click1.wav")} volume={0.75} />
-          </Sequence>
-        )}
-        {frame === 1500 && (
-          <Sequence from={1500} durationInFrames={50}>
-            <Audio src={staticFile("assets/audio/sfx/ui/switch5.wav")} volume={0.8} />
-          </Sequence>
-        )}
-        {frame === 2170 && (
-          <Sequence from={2170} durationInFrames={60}>
-            <Audio src={staticFile("assets/audio/sfx/impacts/sub_impact_thud.wav")} volume={0.85} />
-          </Sequence>
-        )}
-        {frame === 3010 && (
-          <Sequence from={3010} durationInFrames={40}>
-            <Audio src={staticFile("assets/audio/sfx/ui/mouseclick1.wav")} volume={0.7} />
-          </Sequence>
-        )}
-        {frame === 3540 && (
-          <Sequence from={3540} durationInFrames={50}>
-            <Audio src={staticFile("assets/audio/sfx/whooshes/whoosh_fast.wav")} volume={0.9} />
-          </Sequence>
-        )}
+        <div style={{ position: "absolute", left: 8, top: 8, width, height }}>
+          {activeScene === 0 && (
+            <Shell f={localFrame} enter={false}>
+              <Scene1IsekaiHook localFrame={localFrame} fps={fps} blink={blink} />
+            </Shell>
+          )}
+          {activeScene === 1 && (
+            <Shell f={localFrame} enter>
+              <Scene2MedievalInefficiency localFrame={localFrame} fps={fps} />
+            </Shell>
+          )}
+          {activeScene === 2 && (
+            <Shell f={localFrame} enter>
+              <Scene3NorfolkFourFields localFrame={localFrame} fps={fps} />
+            </Shell>
+          )}
+          {activeScene === 3 && (
+            <Shell f={localFrame} enter>
+              <Scene4LivestockWinterBoom localFrame={localFrame} fps={fps} />
+            </Shell>
+          )}
+          {activeScene === 4 && (
+            <Shell f={localFrame} enter={false}>
+              <Scene5TycoonLoop localFrame={localFrame} fps={fps} blink={blink} />
+            </Shell>
+          )}
+        </div>
       </div>
-    </Clock.Provider>
+
+      {/* CAPA 5: grano de papel acuarela cold-press (también "hierve" a 15 fps) */}
+      <svg
+        style={{
+          position: "absolute",
+          width: "100%",
+          height: "100%",
+          pointerEvents: "none",
+          zIndex: 60,
+          opacity: 0.12,
+          mixBlendMode: "multiply",
+        }}
+      >
+        <filter id="paper-noise">
+          <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" seed={stepFrame % 6} result="noise" />
+          <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.8 0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#paper-noise)" />
+      </svg>
+
+      {/* Viñeta suave de acuarela */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: 61,
+          background: "radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 55%, rgba(40,54,24,0.18) 100%)",
+          mixBlendMode: "multiply",
+        }}
+      />
+
+      {/* EFECTOS DE SONIDO MICRO-SINCRONIZADOS (cada uno en su propio <Sequence>) */}
+      {absoluteTimeline &&
+        propScene === undefined &&
+        SFX.map((s, i) => (
+          <Sequence key={i} from={s.at} durationInFrames={s.dur ?? 150} layout="none">
+            <Audio src={staticFile(`assets/audio/sfx/${s.file}`)} volume={s.volume} />
+          </Sequence>
+        ))}
+    </div>
   );
 };
+
+export default World2D;

@@ -1,695 +1,695 @@
 {
   "s0": {
     "text": "Seamos sinceros: si hoy te atropella un camión y reencarnas en un isekai, con tu suerte no tendrás magia rota... te tocará ser granjero. Pero tranquilo, con lo básico que viste en la escuela te harás asquerosamente rico.",
-    "seconds": 6.877,
+    "seconds": 6.897,
     "words": [
       {
         "text": "Seamos",
         "start": 0.0,
-        "end": 0.092
+        "end": 0.095
       },
       {
         "text": "sinceros",
-        "start": 0.092,
-        "end": 0.434
+        "start": 0.095,
+        "end": 0.468
       },
       {
         "text": "si",
-        "start": 0.604,
-        "end": 0.732
+        "start": 0.716,
+        "end": 0.799
       },
       {
         "text": "hoy",
-        "start": 0.732,
-        "end": 0.775
+        "start": 0.799,
+        "end": 0.841
       },
       {
         "text": "te",
-        "start": 0.775,
-        "end": 0.817
+        "start": 0.841,
+        "end": 0.882
       },
       {
         "text": "atropella",
-        "start": 0.817,
-        "end": 1.073
+        "start": 0.882,
+        "end": 1.131
       },
       {
         "text": "un",
-        "start": 1.073,
-        "end": 1.073
+        "start": 1.131,
+        "end": 1.172
       },
       {
         "text": "camión",
-        "start": 1.073,
-        "end": 1.372
+        "start": 1.172,
+        "end": 1.421
       },
       {
         "text": "y",
-        "start": 1.457,
-        "end": 1.542
+        "start": 1.504,
+        "end": 1.545
       },
       {
         "text": "reencarnas",
-        "start": 1.542,
-        "end": 1.841
+        "start": 1.545,
+        "end": 1.835
       },
       {
         "text": "en",
-        "start": 1.841,
-        "end": 1.884
+        "start": 1.835,
+        "end": 1.876
       },
       {
         "text": "un",
-        "start": 1.884,
-        "end": 1.969
+        "start": 1.876,
+        "end": 1.918
       },
       {
         "text": "isekai",
-        "start": 1.969,
-        "end": 2.225
+        "start": 1.918,
+        "end": 2.208
       },
       {
         "text": "con",
-        "start": 2.395,
-        "end": 2.523
+        "start": 2.374,
+        "end": 2.457
       },
       {
         "text": "tu",
-        "start": 2.523,
-        "end": 2.566
+        "start": 2.457,
+        "end": 2.539
       },
       {
         "text": "suerte",
-        "start": 2.566,
-        "end": 2.737
+        "start": 2.539,
+        "end": 2.705
       },
       {
         "text": "no",
-        "start": 2.737,
-        "end": 2.822
+        "start": 2.705,
+        "end": 2.747
       },
       {
         "text": "tendrás",
-        "start": 2.822,
-        "end": 2.992
+        "start": 2.747,
+        "end": 2.995
       },
       {
         "text": "magia",
-        "start": 2.992,
-        "end": 3.12
+        "start": 2.995,
+        "end": 3.161
       },
       {
         "text": "rota",
-        "start": 3.12,
-        "end": 3.334
+        "start": 3.161,
+        "end": 3.368
       },
       {
         "text": "te",
-        "start": 3.59,
-        "end": 3.632
+        "start": 3.534,
+        "end": 3.617
       },
       {
         "text": "tocará",
-        "start": 3.632,
-        "end": 3.803
+        "start": 3.617,
+        "end": 3.782
       },
       {
         "text": "ser",
-        "start": 3.803,
-        "end": 3.931
+        "start": 3.782,
+        "end": 3.907
       },
       {
         "text": "granjero",
-        "start": 3.931,
-        "end": 4.187
+        "start": 3.907,
+        "end": 4.197
       },
       {
         "text": "Pero",
         "start": 4.528,
-        "end": 4.613
+        "end": 4.653
       },
       {
         "text": "tranquilo",
-        "start": 4.613,
-        "end": 4.954
+        "start": 4.653,
+        "end": 4.984
       },
       {
         "text": "con",
-        "start": 5.125,
-        "end": 5.21
+        "start": 5.15,
+        "end": 5.233
       },
       {
         "text": "lo",
-        "start": 5.21,
-        "end": 5.253
+        "start": 5.233,
+        "end": 5.274
       },
       {
         "text": "básico",
-        "start": 5.253,
-        "end": 5.466
+        "start": 5.274,
+        "end": 5.481
       },
       {
         "text": "que",
-        "start": 5.466,
-        "end": 5.509
+        "start": 5.481,
+        "end": 5.523
       },
       {
         "text": "viste",
-        "start": 5.509,
-        "end": 5.637
+        "start": 5.523,
+        "end": 5.647
       },
       {
         "text": "en",
-        "start": 5.637,
-        "end": 5.679
+        "start": 5.647,
+        "end": 5.688
       },
       {
         "text": "la",
-        "start": 5.679,
-        "end": 5.722
+        "start": 5.688,
+        "end": 5.73
       },
       {
         "text": "escuela",
-        "start": 5.722,
-        "end": 5.893
+        "start": 5.73,
+        "end": 5.937
       },
       {
         "text": "te",
-        "start": 5.893,
+        "start": 5.937,
         "end": 5.978
       },
       {
         "text": "harás",
         "start": 5.978,
-        "end": 6.106
+        "end": 6.103
       },
       {
         "text": "asquerosamente",
-        "start": 6.148,
-        "end": 6.49
+        "start": 6.144,
+        "end": 6.517
       },
       {
         "text": "rico",
-        "start": 6.49,
-        "end": 6.746
+        "start": 6.517,
+        "end": 6.724
       }
     ]
   },
   "s1": {
     "text": "Mira cómo cultivan en la Edad Media: usan la mitad de su tierra y dejan la otra mitad vacía todo un año para que el suelo 'descanse' y recupere nutrientes. ¡Están perdiendo la mitad de su dinero y pasando hambre!",
-    "seconds": 10.881,
+    "seconds": 10.875,
     "words": [
       {
         "text": "Mira",
         "start": 0.0,
-        "end": 0.127
+        "end": 0.113
       },
       {
         "text": "cómo",
-        "start": 0.127,
-        "end": 0.338
+        "start": 0.113,
+        "end": 0.313
       },
       {
         "text": "cultivan",
-        "start": 0.338,
-        "end": 0.759
+        "start": 0.313,
+        "end": 0.713
       },
       {
         "text": "en",
-        "start": 0.759,
-        "end": 0.829
+        "start": 0.779,
+        "end": 0.846
       },
       {
         "text": "la",
-        "start": 0.829,
-        "end": 0.899
+        "start": 0.846,
+        "end": 0.979
       },
       {
         "text": "Edad",
-        "start": 0.899,
-        "end": 1.039
+        "start": 0.979,
+        "end": 1.046
       },
       {
         "text": "Media",
-        "start": 1.039,
-        "end": 1.46
+        "start": 1.046,
+        "end": 1.379
       },
       {
         "text": "usan",
-        "start": 1.741,
-        "end": 1.951
+        "start": 1.712,
+        "end": 1.911
       },
       {
         "text": "la",
-        "start": 1.951,
-        "end": 2.021
+        "start": 1.911,
+        "end": 1.978
       },
       {
         "text": "mitad",
-        "start": 2.021,
-        "end": 2.232
+        "start": 1.978,
+        "end": 2.244
       },
       {
         "text": "de",
-        "start": 2.232,
-        "end": 2.302
+        "start": 2.244,
+        "end": 2.244
       },
       {
         "text": "su",
-        "start": 2.302,
-        "end": 2.442
+        "start": 2.244,
+        "end": 2.378
       },
       {
         "text": "tierra",
-        "start": 2.442,
-        "end": 2.793
+        "start": 2.378,
+        "end": 2.777
       },
       {
         "text": "y",
-        "start": 3.073,
-        "end": 3.144
+        "start": 3.044,
+        "end": 3.177
       },
       {
         "text": "dejan",
-        "start": 3.144,
-        "end": 3.354
+        "start": 3.177,
+        "end": 3.443
       },
       {
         "text": "la",
-        "start": 3.354,
-        "end": 3.494
+        "start": 3.443,
+        "end": 3.577
       },
       {
         "text": "otra",
-        "start": 3.494,
-        "end": 3.635
+        "start": 3.577,
+        "end": 3.71
       },
       {
         "text": "mitad",
-        "start": 3.635,
-        "end": 3.845
+        "start": 3.71,
+        "end": 3.976
       },
       {
         "text": "vacía",
-        "start": 3.845,
-        "end": 4.196
+        "start": 3.976,
+        "end": 4.442
       },
       {
         "text": "todo",
-        "start": 4.196,
-        "end": 4.406
+        "start": 4.442,
+        "end": 4.642
       },
       {
         "text": "un",
-        "start": 4.406,
-        "end": 4.476
+        "start": 4.642,
+        "end": 4.709
       },
       {
         "text": "año",
-        "start": 4.476,
-        "end": 4.827
+        "start": 4.709,
+        "end": 5.042
       },
       {
         "text": "para",
-        "start": 5.038,
-        "end": 5.248
+        "start": 5.375,
+        "end": 5.508
       },
       {
         "text": "que",
-        "start": 5.248,
-        "end": 5.318
+        "start": 5.508,
+        "end": 5.575
       },
       {
         "text": "el",
-        "start": 5.318,
-        "end": 5.388
+        "start": 5.575,
+        "end": 5.641
       },
       {
         "text": "suelo",
-        "start": 5.388,
-        "end": 5.809
+        "start": 5.641,
+        "end": 6.107
       },
       {
         "text": "'descanse'",
-        "start": 5.879,
-        "end": 6.511
+        "start": 6.241,
+        "end": 6.773
       },
       {
         "text": "y",
-        "start": 6.651,
-        "end": 6.791
+        "start": 6.973,
+        "end": 7.04
       },
       {
         "text": "recupere",
-        "start": 6.791,
-        "end": 7.142
+        "start": 7.04,
+        "end": 7.439
       },
       {
         "text": "nutrientes",
-        "start": 7.142,
-        "end": 7.773
+        "start": 7.439,
+        "end": 8.039
       },
       {
         "text": "Están",
-        "start": 8.264,
-        "end": 8.545
+        "start": 8.372,
+        "end": 8.638
       },
       {
         "text": "perdiendo",
-        "start": 8.545,
-        "end": 8.826
+        "start": 8.638,
+        "end": 8.905
       },
       {
         "text": "la",
-        "start": 8.896,
-        "end": 8.966
+        "start": 8.905,
+        "end": 9.038
       },
       {
         "text": "mitad",
-        "start": 8.966,
-        "end": 9.176
+        "start": 9.038,
+        "end": 9.238
       },
       {
         "text": "de",
-        "start": 9.176,
-        "end": 9.247
+        "start": 9.238,
+        "end": 9.238
       },
       {
         "text": "su",
-        "start": 9.247,
-        "end": 9.387
+        "start": 9.238,
+        "end": 9.371
       },
       {
         "text": "dinero",
-        "start": 9.387,
-        "end": 9.808
+        "start": 9.371,
+        "end": 9.837
       },
       {
         "text": "y",
-        "start": 9.948,
-        "end": 10.088
+        "start": 9.97,
+        "end": 10.037
       },
       {
         "text": "pasando",
-        "start": 10.088,
-        "end": 10.439
+        "start": 10.037,
+        "end": 10.37
       },
       {
         "text": "hambre",
-        "start": 10.439,
-        "end": 10.72
+        "start": 10.37,
+        "end": 10.703
       }
     ]
   },
   "s2": {
     "text": "Aquí aplicas lógica moderna: ¡Nunca dejes tierra vacía! Divides tu terreno en cuatro. En uno plantas trigo para vender; en otro cebada para cerveza; en el tercero nabos, y en el cuarto el secreto: tréboles o frijoles. Esas plantas toman nutrientes del aire y recargan la tierra gratis. Cada año solo giras los cultivos de lugar.",
-    "seconds": 17.878,
+    "seconds": 17.868,
     "words": [
       {
         "text": "Aquí",
         "start": 0.0,
-        "end": 0.208
+        "end": 0.144
       },
       {
         "text": "aplicas",
-        "start": 0.208,
-        "end": 0.571
+        "start": 0.144,
+        "end": 0.594
       },
       {
         "text": "lógica",
-        "start": 0.571,
-        "end": 0.861
+        "start": 0.594,
+        "end": 0.893
       },
       {
         "text": "moderna",
-        "start": 0.861,
-        "end": 1.369
+        "start": 0.893,
+        "end": 1.418
       },
       {
         "text": "Nunca",
-        "start": 1.659,
-        "end": 2.021
+        "start": 1.792,
+        "end": 2.092
       },
       {
         "text": "dejes",
-        "start": 2.021,
-        "end": 2.311
+        "start": 2.092,
+        "end": 2.391
       },
       {
         "text": "tierra",
-        "start": 2.311,
-        "end": 2.529
+        "start": 2.391,
+        "end": 2.691
       },
       {
         "text": "vacía",
-        "start": 2.529,
-        "end": 3.036
+        "start": 2.691,
+        "end": 3.215
       },
       {
         "text": "Divides",
-        "start": 3.399,
-        "end": 3.834
+        "start": 3.59,
+        "end": 3.889
       },
       {
         "text": "tu",
-        "start": 3.834,
-        "end": 3.906
+        "start": 3.889,
+        "end": 4.039
       },
       {
         "text": "terreno",
-        "start": 3.906,
-        "end": 4.196
+        "start": 4.039,
+        "end": 4.414
       },
       {
         "text": "en",
-        "start": 4.196,
-        "end": 4.269
+        "start": 4.414,
+        "end": 4.564
       },
       {
         "text": "cuatro",
-        "start": 4.269,
-        "end": 4.777
+        "start": 4.564,
+        "end": 5.088
       },
       {
         "text": "En",
-        "start": 5.139,
-        "end": 5.284
+        "start": 5.462,
+        "end": 5.612
       },
       {
         "text": "uno",
-        "start": 5.284,
-        "end": 5.502
+        "start": 5.612,
+        "end": 5.837
       },
       {
         "text": "plantas",
-        "start": 5.502,
-        "end": 5.792
+        "start": 5.837,
+        "end": 6.211
       },
       {
         "text": "trigo",
-        "start": 5.792,
-        "end": 6.082
+        "start": 6.211,
+        "end": 6.511
       },
       {
         "text": "para",
-        "start": 6.082,
-        "end": 6.227
+        "start": 6.511,
+        "end": 6.661
       },
       {
         "text": "vender",
-        "start": 6.227,
-        "end": 6.662
+        "start": 6.661,
+        "end": 7.11
       },
       {
         "text": "en",
-        "start": 6.952,
-        "end": 7.097
+        "start": 7.485,
+        "end": 7.56
       },
       {
         "text": "otro",
-        "start": 7.097,
-        "end": 7.314
+        "start": 7.56,
+        "end": 7.71
       },
       {
         "text": "cebada",
-        "start": 7.314,
-        "end": 7.677
+        "start": 7.71,
+        "end": 8.084
       },
       {
         "text": "para",
-        "start": 7.677,
-        "end": 7.822
+        "start": 8.084,
+        "end": 8.234
       },
       {
         "text": "cerveza",
-        "start": 7.822,
-        "end": 8.33
+        "start": 8.234,
+        "end": 8.758
       },
       {
         "text": "en",
-        "start": 8.692,
-        "end": 8.837
+        "start": 9.058,
+        "end": 9.133
       },
       {
         "text": "el",
-        "start": 8.837,
-        "end": 8.91
+        "start": 9.133,
+        "end": 9.282
       },
       {
         "text": "tercero",
-        "start": 8.91,
-        "end": 9.272
+        "start": 9.282,
+        "end": 9.582
       },
       {
         "text": "nabos",
-        "start": 9.272,
-        "end": 9.635
+        "start": 9.582,
+        "end": 10.031
       },
       {
         "text": "y",
-        "start": 9.852,
-        "end": 9.925
+        "start": 10.181,
+        "end": 10.256
       },
       {
         "text": "en",
-        "start": 9.925,
-        "end": 9.997
+        "start": 10.256,
+        "end": 10.331
       },
       {
         "text": "el",
-        "start": 9.997,
-        "end": 10.142
+        "start": 10.331,
+        "end": 10.406
       },
       {
         "text": "cuarto",
-        "start": 10.142,
-        "end": 10.36
+        "start": 10.406,
+        "end": 10.631
       },
       {
         "text": "el",
-        "start": 10.36,
-        "end": 10.432
+        "start": 10.631,
+        "end": 10.706
       },
       {
         "text": "secreto",
-        "start": 10.432,
-        "end": 11.012
+        "start": 10.706,
+        "end": 11.305
       },
       {
         "text": "tréboles",
-        "start": 11.302,
-        "end": 11.738
+        "start": 11.455,
+        "end": 11.829
       },
       {
         "text": "o",
-        "start": 11.738,
-        "end": 11.81
+        "start": 11.829,
+        "end": 11.904
       },
       {
         "text": "frijoles",
-        "start": 11.81,
-        "end": 12.39
+        "start": 11.904,
+        "end": 12.428
       },
       {
         "text": "Esas",
-        "start": 12.463,
-        "end": 12.753
+        "start": 12.578,
+        "end": 12.803
       },
       {
         "text": "plantas",
-        "start": 12.753,
-        "end": 13.043
+        "start": 12.803,
+        "end": 13.252
       },
       {
         "text": "toman",
-        "start": 13.043,
-        "end": 13.26
+        "start": 13.252,
+        "end": 13.477
       },
       {
         "text": "nutrientes",
-        "start": 13.26,
-        "end": 13.695
+        "start": 13.477,
+        "end": 13.852
       },
       {
         "text": "del",
-        "start": 13.695,
-        "end": 13.84
+        "start": 13.852,
+        "end": 13.926
       },
       {
         "text": "aire",
-        "start": 13.84,
-        "end": 14.13
+        "start": 13.926,
+        "end": 14.301
       },
       {
         "text": "y",
-        "start": 14.348,
-        "end": 14.493
+        "start": 14.451,
+        "end": 14.526
       },
       {
         "text": "recargan",
-        "start": 14.493,
-        "end": 14.928
+        "start": 14.526,
+        "end": 14.9
       },
       {
         "text": "la",
-        "start": 14.928,
-        "end": 15.001
+        "start": 14.9,
+        "end": 15.05
       },
       {
         "text": "tierra",
-        "start": 15.001,
-        "end": 15.146
+        "start": 15.05,
+        "end": 15.275
       },
       {
         "text": "gratis",
-        "start": 15.146,
-        "end": 15.581
+        "start": 15.275,
+        "end": 15.724
       },
       {
         "text": "Cada",
-        "start": 15.945,
-        "end": 16.163
+        "start": 15.953,
+        "end": 16.177
       },
       {
         "text": "año",
-        "start": 16.163,
-        "end": 16.308
+        "start": 16.177,
+        "end": 16.327
       },
       {
         "text": "solo",
-        "start": 16.308,
-        "end": 16.525
+        "start": 16.327,
+        "end": 16.552
       },
       {
         "text": "giras",
-        "start": 16.525,
-        "end": 16.815
+        "start": 16.552,
+        "end": 16.776
       },
       {
         "text": "los",
-        "start": 16.815,
-        "end": 16.888
+        "start": 16.776,
+        "end": 16.926
       },
       {
         "text": "cultivos",
-        "start": 16.888,
-        "end": 17.323
+        "start": 16.926,
+        "end": 17.301
       },
       {
         "text": "de",
-        "start": 17.323,
-        "end": 17.395
+        "start": 17.301,
+        "end": 17.376
       },
       {
         "text": "lugar",
-        "start": 17.395,
-        "end": 17.758
+        "start": 17.376,
+        "end": 17.75
       }
     ]
   },
   "s3": {
     "text": "¿Lo mejor? Los nabos y tréboles alimentan a tus vacas y ovejas todo el invierno. Mientras los demás nobles sacrifican a su ganado porque no tienen qué darles de comer, tú tienes carne fresca, leche, lana, abono gratis y el doble de cosechas todo el año.",
-    "seconds": 13.865,
+    "seconds": 13.855,
     "words": [
       {
         "text": "Lo",
@@ -699,388 +699,388 @@
       {
         "text": "mejor",
         "start": 0.0,
-        "end": 0.504
+        "end": 0.45
       },
       {
         "text": "Los",
-        "start": 1.015,
-        "end": 1.161
+        "start": 0.901,
+        "end": 1.052
       },
       {
         "text": "nabos",
-        "start": 1.161,
-        "end": 1.453
+        "start": 1.052,
+        "end": 1.503
       },
       {
         "text": "y",
-        "start": 1.453,
-        "end": 1.599
+        "start": 1.503,
+        "end": 1.503
       },
       {
         "text": "tréboles",
-        "start": 1.599,
-        "end": 1.964
+        "start": 1.503,
+        "end": 1.954
       },
       {
         "text": "alimentan",
-        "start": 1.964,
-        "end": 2.475
+        "start": 1.954,
+        "end": 2.33
       },
       {
         "text": "a",
-        "start": 2.475,
-        "end": 2.475
+        "start": 2.33,
+        "end": 2.405
       },
       {
         "text": "tus",
-        "start": 2.475,
-        "end": 2.621
+        "start": 2.405,
+        "end": 2.555
       },
       {
         "text": "vacas",
-        "start": 2.621,
-        "end": 2.913
+        "start": 2.555,
+        "end": 2.856
       },
       {
         "text": "y",
-        "start": 2.913,
-        "end": 2.986
+        "start": 2.856,
+        "end": 2.856
       },
       {
         "text": "ovejas",
-        "start": 2.986,
-        "end": 3.278
+        "start": 2.856,
+        "end": 3.307
       },
       {
         "text": "todo",
-        "start": 3.278,
-        "end": 3.497
+        "start": 3.307,
+        "end": 3.457
       },
       {
         "text": "el",
-        "start": 3.497,
-        "end": 3.57
+        "start": 3.457,
+        "end": 3.533
       },
       {
         "text": "invierno",
-        "start": 3.57,
-        "end": 4.081
+        "start": 3.533,
+        "end": 3.984
       },
       {
         "text": "Mientras",
-        "start": 4.519,
-        "end": 4.811
+        "start": 4.585,
+        "end": 4.961
       },
       {
         "text": "los",
-        "start": 4.811,
-        "end": 4.957
+        "start": 4.961,
+        "end": 5.111
       },
       {
         "text": "demás",
-        "start": 4.957,
-        "end": 5.176
+        "start": 5.111,
+        "end": 5.337
       },
       {
         "text": "nobles",
-        "start": 5.176,
-        "end": 5.614
+        "start": 5.337,
+        "end": 5.713
       },
       {
         "text": "sacrifican",
-        "start": 5.76,
-        "end": 6.271
+        "start": 5.713,
+        "end": 6.164
       },
       {
         "text": "a",
-        "start": 6.271,
-        "end": 6.344
+        "start": 6.164,
+        "end": 6.164
       },
       {
         "text": "su",
-        "start": 6.344,
-        "end": 6.49
+        "start": 6.164,
+        "end": 6.314
       },
       {
         "text": "ganado",
-        "start": 6.49,
-        "end": 6.928
+        "start": 6.314,
+        "end": 6.765
       },
       {
         "text": "porque",
-        "start": 7.22,
-        "end": 7.512
+        "start": 6.991,
+        "end": 7.216
       },
       {
         "text": "no",
-        "start": 7.512,
-        "end": 7.585
+        "start": 7.216,
+        "end": 7.367
       },
       {
         "text": "tienen",
-        "start": 7.585,
-        "end": 7.877
+        "start": 7.367,
+        "end": 7.667
       },
       {
         "text": "qué",
-        "start": 7.877,
-        "end": 8.023
+        "start": 7.667,
+        "end": 7.742
       },
       {
         "text": "darles",
-        "start": 8.023,
-        "end": 8.242
+        "start": 7.742,
+        "end": 7.968
       },
       {
         "text": "de",
-        "start": 8.242,
-        "end": 8.315
+        "start": 7.968,
+        "end": 8.118
       },
       {
         "text": "comer",
-        "start": 8.315,
-        "end": 8.753
+        "start": 8.118,
+        "end": 8.494
       },
       {
         "text": "tú",
-        "start": 9.045,
-        "end": 9.191
+        "start": 8.945,
+        "end": 9.096
       },
       {
         "text": "tienes",
-        "start": 9.191,
-        "end": 9.41
+        "start": 9.096,
+        "end": 9.321
       },
       {
         "text": "carne",
-        "start": 9.41,
-        "end": 9.702
+        "start": 9.321,
+        "end": 9.547
       },
       {
         "text": "fresca",
-        "start": 9.702,
-        "end": 10.14
+        "start": 9.547,
+        "end": 10.073
       },
       {
         "text": "leche",
-        "start": 10.286,
-        "end": 10.724
+        "start": 10.148,
+        "end": 10.674
       },
       {
         "text": "lana",
-        "start": 10.87,
-        "end": 11.235
+        "start": 10.674,
+        "end": 11.125
       },
       {
         "text": "abono",
-        "start": 11.381,
-        "end": 11.673
+        "start": 11.276,
+        "end": 11.576
       },
       {
         "text": "gratis",
-        "start": 11.746,
-        "end": 12.184
+        "start": 11.576,
+        "end": 12.027
       },
       {
         "text": "y",
-        "start": 12.33,
+        "start": 12.178,
+        "end": 12.253
+      },
+      {
+        "text": "el",
+        "start": 12.253,
         "end": 12.403
       },
       {
-        "text": "el",
-        "start": 12.403,
-        "end": 12.476
-      },
-      {
         "text": "doble",
-        "start": 12.476,
-        "end": 12.695
+        "start": 12.403,
+        "end": 12.629
       },
       {
         "text": "de",
-        "start": 12.695,
-        "end": 12.768
+        "start": 12.629,
+        "end": 12.704
       },
       {
         "text": "cosechas",
-        "start": 12.768,
-        "end": 13.206
+        "start": 12.704,
+        "end": 13.23
       },
       {
         "text": "todo",
-        "start": 13.206,
-        "end": 13.352
+        "start": 13.23,
+        "end": 13.381
       },
       {
         "text": "el",
-        "start": 13.352,
-        "end": 13.425
+        "start": 13.381,
+        "end": 13.381
       },
       {
         "text": "año",
-        "start": 13.425,
-        "end": 13.717
+        "start": 13.381,
+        "end": 13.756
       }
     ]
   },
   "s4": {
     "text": "Sin lanzar una sola bola de fuego, acabas de comprar el reino entero con pura lógica de secundaria. Guarda este video... nunca sabes cuándo te vas a topar con un camión.",
-    "seconds": 9.097,
+    "seconds": 9.006,
     "words": [
       {
         "text": "Sin",
         "start": 0.0,
-        "end": 0.166
+        "end": 0.156
       },
       {
         "text": "lanzar",
-        "start": 0.166,
-        "end": 0.566
+        "start": 0.156,
+        "end": 0.476
       },
       {
         "text": "una",
-        "start": 0.566,
-        "end": 0.726
+        "start": 0.476,
+        "end": 0.636
       },
       {
         "text": "sola",
-        "start": 0.726,
-        "end": 0.966
+        "start": 0.636,
+        "end": 0.876
       },
       {
         "text": "bola",
-        "start": 0.966,
-        "end": 1.126
+        "start": 0.876,
+        "end": 1.116
       },
       {
         "text": "de",
-        "start": 1.126,
-        "end": 1.286
+        "start": 1.116,
+        "end": 1.196
       },
       {
         "text": "fuego",
-        "start": 1.286,
-        "end": 1.766
+        "start": 1.196,
+        "end": 1.596
       },
       {
         "text": "acabas",
-        "start": 2.166,
-        "end": 2.566
+        "start": 1.836,
+        "end": 2.156
       },
       {
         "text": "de",
-        "start": 2.566,
-        "end": 2.646
+        "start": 2.156,
+        "end": 2.236
       },
       {
         "text": "comprar",
-        "start": 2.646,
-        "end": 2.966
+        "start": 2.236,
+        "end": 2.556
       },
       {
         "text": "el",
-        "start": 2.966,
-        "end": 3.126
+        "start": 2.556,
+        "end": 2.716
       },
       {
         "text": "reino",
-        "start": 3.126,
-        "end": 3.366
+        "start": 2.716,
+        "end": 2.956
       },
       {
         "text": "entero",
-        "start": 3.366,
-        "end": 3.686
+        "start": 2.956,
+        "end": 3.356
       },
       {
         "text": "con",
-        "start": 3.686,
-        "end": 3.846
+        "start": 3.356,
+        "end": 3.516
       },
       {
         "text": "pura",
-        "start": 3.846,
-        "end": 4.086
+        "start": 3.516,
+        "end": 3.756
       },
       {
         "text": "lógica",
-        "start": 4.086,
-        "end": 4.406
+        "start": 3.756,
+        "end": 4.076
       },
       {
         "text": "de",
-        "start": 4.406,
-        "end": 4.486
+        "start": 4.076,
+        "end": 4.156
       },
       {
         "text": "secundaria",
-        "start": 4.486,
-        "end": 5.046
+        "start": 4.156,
+        "end": 4.796
       },
       {
         "text": "Guarda",
-        "start": 5.606,
-        "end": 5.846
+        "start": 5.356,
+        "end": 5.596
       },
       {
         "text": "este",
-        "start": 5.846,
-        "end": 6.086
+        "start": 5.596,
+        "end": 5.836
       },
       {
         "text": "video",
-        "start": 6.086,
-        "end": 6.486
+        "start": 5.836,
+        "end": 6.236
       },
       {
         "text": "nunca",
-        "start": 6.886,
-        "end": 7.206
+        "start": 6.476,
+        "end": 6.796
       },
       {
         "text": "sabes",
-        "start": 7.206,
-        "end": 7.446
+        "start": 6.796,
+        "end": 7.116
       },
       {
         "text": "cuándo",
-        "start": 7.446,
-        "end": 7.686
+        "start": 7.116,
+        "end": 7.436
       },
       {
         "text": "te",
-        "start": 7.686,
-        "end": 7.766
+        "start": 7.436,
+        "end": 7.596
       },
       {
         "text": "vas",
-        "start": 7.766,
-        "end": 7.926
+        "start": 7.596,
+        "end": 7.756
       },
       {
         "text": "a",
-        "start": 7.926,
-        "end": 8.006
+        "start": 7.756,
+        "end": 7.836
       },
       {
         "text": "topar",
-        "start": 8.006,
-        "end": 8.326
+        "start": 7.836,
+        "end": 8.236
       },
       {
         "text": "con",
-        "start": 8.326,
-        "end": 8.486
+        "start": 8.236,
+        "end": 8.396
       },
       {
         "text": "un",
-        "start": 8.486,
-        "end": 8.566
+        "start": 8.396,
+        "end": 8.476
       },
       {
         "text": "camión",
-        "start": 8.566,
-        "end": 8.966
+        "start": 8.476,
+        "end": 8.956
       }
     ]
   }

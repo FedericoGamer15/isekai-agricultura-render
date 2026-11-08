@@ -1,122 +1,164 @@
-import React from "react";
-import { useCurrentFrame, useVideoConfig } from "remotion";
-import { THEME } from "../theme";
-import voData from "../data/vo.json";
+import React, { useMemo } from "react";
+import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import voDataRaw from "../data/vo.json";
 
-interface CaptionsProps {
-  sceneKey: string;
-  sceneStartFrame: number;
-  highlights?: string[];
+interface WordTiming {
+  text: string;
+  start: number;
+  end: number;
 }
 
-export const AnimatedCaptions: React.FC<CaptionsProps> = ({
-  sceneKey,
-  sceneStartFrame,
-  highlights = [],
-}) => {
+interface SceneVo {
+  text: string;
+  seconds: number;
+  words: WordTiming[];
+}
+
+interface TimedWord {
+  text: string;
+  startFrame: number;
+  endFrame: number;
+  sceneIndex: number;
+}
+
+interface PhraseGroup {
+  words: TimedWord[];
+  startFrame: number;
+  endFrame: number;
+}
+
+const SCENE_START = [0, 420, 1080, 2160, 3000];
+
+// Palabras clave a resaltar con colores temáticos
+const HIGHLIGHT_WORDS: Record<string, string> = {
+  isekai: "#FFB703",
+  campesino: "#BC6C25",
+  rico: "#52B788",
+  dinero: "#FFB703",
+  vacía: "#EF233C",
+  hambre: "#EF233C",
+  trigo: "#FFB703",
+  cebada: "#FB8500",
+  nabos: "#9B5DE5",
+  tréboles: "#52B788",
+  frijoles: "#52B788",
+  gratis: "#52B788",
+  giras: "#FFB703",
+  invierno: "#00F5D4",
+  abono: "#FFB703",
+  reino: "#FFB703",
+  camión: "#EF233C",
+  lógica: "#52B788",
+};
+
+export const AnimatedCaptions: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const sceneVO = (voData as any)[sceneKey];
-  if (!sceneVO || !sceneVO.words || sceneVO.words.length === 0) {
-    return null;
-  }
+  const phraseGroups = useMemo(() => {
+    const voData = voDataRaw as Record<string, SceneVo>;
+    const scenes = ["s0", "s1", "s2", "s3", "s4"];
+    const groups: PhraseGroup[] = [];
 
-  const localTime = Math.max(0, (frame - sceneStartFrame) / fps);
+    scenes.forEach((sKey, sIdx) => {
+      const sceneVo = voData[sKey];
+      if (!sceneVo || !sceneVo.words || sceneVo.words.length === 0) return;
 
-  let activeWordIndex = -1;
-  for (let i = 0; i < sceneVO.words.length; i++) {
-    const w = sceneVO.words[i];
-    if (localTime >= w.start && localTime <= w.end + 0.12) {
-      activeWordIndex = i;
-      break;
-    }
-    if (localTime < w.start && activeWordIndex === -1 && i > 0) {
-      activeWordIndex = i - 1;
-      break;
-    }
-  }
+      const sceneBaseFrame = SCENE_START[sIdx];
+      const timedWords: TimedWord[] = sceneVo.words.map((w) => ({
+        text: w.text,
+        startFrame: sceneBaseFrame + Math.round(w.start * fps),
+        endFrame: sceneBaseFrame + Math.round(w.end * fps),
+        sceneIndex: sIdx,
+      }));
 
-  if (activeWordIndex === -1 && localTime >= sceneVO.words[sceneVO.words.length - 1].end) {
-    activeWordIndex = sceneVO.words.length - 1;
-  }
+      // Agrupar en fragmentos de 4 palabras
+      const WORDS_PER_GROUP = 4;
+      for (let i = 0; i < timedWords.length; i += WORDS_PER_GROUP) {
+        const slice = timedWords.slice(i, i + WORDS_PER_GROUP);
+        const groupStart = slice[0].startFrame;
+        const groupEnd = Math.max(slice[slice.length - 1].endFrame, groupStart + 30);
+        groups.push({
+          words: slice,
+          startFrame: groupStart,
+          endFrame: groupEnd + 4,
+        });
+      }
+    });
 
-  const chunkSize = 4;
-  const chunkIndex = Math.floor(Math.max(0, activeWordIndex) / chunkSize);
-  const startIdx = chunkIndex * chunkSize;
-  const endIdx = Math.min(sceneVO.words.length, startIdx + chunkSize);
-  const visibleWords = sceneVO.words.slice(startIdx, endIdx);
+    return groups;
+  }, [fps]);
 
-  const cleanWord = (str: string) => str.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]/g, "").toUpperCase();
-  const isHighlighted = (wordText: string) => {
-    const cleaned = cleanWord(wordText);
-    return highlights.some((h) => cleanWord(h) === cleaned || cleaned.includes(cleanWord(h)));
-  };
+  // Encontrar el grupo activo
+  const activeGroup = phraseGroups.find(
+    (g) => frame >= g.startFrame && frame <= g.endFrame
+  );
+
+  if (!activeGroup) return null;
 
   return (
     <div
       style={{
         position: "absolute",
-        top: THEME.safe.subtitleY,
-        left: THEME.safe.left,
-        right: THEME.safe.right,
+        left: 40,
+        right: 40,
+        bottom: 240,
         display: "flex",
+        flexWrap: "wrap",
         justifyContent: "center",
         alignItems: "center",
+        gap: "12px 18px",
+        zIndex: 100,
         pointerEvents: "none",
-        zIndex: 70,
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "center",
-          gap: "8px 18px",
-          maxWidth: 960,
-          padding: "10px 20px",
-          backgroundColor: "rgba(40, 54, 24, 0.45)",
-          backdropFilter: "blur(4px)",
-          borderRadius: 24,
-          border: "2px solid rgba(254, 250, 224, 0.4)",
-        }}
-      >
-        {visibleWords.map((w: any, idx: number) => {
-          const absoluteIndex = startIdx + idx;
-          const isActive = absoluteIndex === activeWordIndex;
-          const highlighted = isHighlighted(w.text);
+      {activeGroup.words.map((w, idx) => {
+        const isActive = frame >= w.startFrame && frame <= w.endFrame;
+        const isPast = frame > w.endFrame;
 
-          let color = THEME.colors.white;
-          if (highlighted) {
-            color = THEME.colors.yellow;
-          }
-          if (isActive) {
-            color = highlighted ? THEME.colors.yellow : THEME.colors.green;
-          }
+        const popProgress = isActive
+          ? spring({
+              frame: frame - w.startFrame,
+              fps,
+              config: { damping: 10, stiffness: 180 },
+            })
+          : 0;
 
-          return (
-            <span
-              key={absoluteIndex}
-              style={{
-                fontFamily: THEME.fonts.main,
-                fontWeight: 900,
-                fontSize: 52,
-                lineHeight: 1.15,
-                letterSpacing: "-0.01em",
-                color,
-                textTransform: "uppercase",
-                transform: isActive ? "scale(1.16)" : "scale(1.0)",
-                transition: "transform 0.08s ease-out",
-                textShadow:
-                  "0px 4px 10px rgba(0,0,0,0.85), -2px -2px 0px #283618, 2px -2px 0px #283618, -2px 2px 0px #283618, 2px 2px 0px #283618",
-                display: "inline-block",
-              }}
-            >
-              {w.text}
-            </span>
-          );
-        })}
-      </div>
+        const cleanWord = w.text.toLowerCase().replace(/[^a-záéíóúñ]/g, "");
+        const highlightColor = HIGHLIGHT_WORDS[cleanWord];
+
+        const scale = isActive ? 1 + popProgress * 0.18 : 1;
+        const color = isActive
+          ? highlightColor || "#FFD166"
+          : isPast
+          ? "#FEFAE0"
+          : "rgba(254, 250, 224, 0.75)";
+
+        return (
+          <span
+            key={idx}
+            style={{
+              fontFamily: "'Inter', 'Montserrat', sans-serif",
+              fontSize: 54,
+              fontWeight: 900,
+              textTransform: "uppercase",
+              letterSpacing: "1px",
+              color,
+              transform: `scale(${scale})`,
+              transformOrigin: "center bottom",
+              display: "inline-block",
+              textShadow:
+                "3px 3px 0 #1B1D2E, -3px -3px 0 #1B1D2E, 3px -3px 0 #1B1D2E, -3px 3px 0 #1B1D2E, 0 6px 14px rgba(0,0,0,0.8)",
+              filter: isActive && highlightColor ? `drop-shadow(0 0 12px ${highlightColor})` : undefined,
+              transition: "color 0.1s ease",
+            }}
+          >
+            {w.text}
+          </span>
+        );
+      })}
     </div>
   );
 };
+
+export default AnimatedCaptions;

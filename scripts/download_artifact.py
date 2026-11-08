@@ -15,7 +15,7 @@ import urllib.error
 import urllib.request
 import zipfile
 
-REPO = "FedericoGamer15/prevencion-72h-render"
+REPO = "FedericoGamer15/isekai-agricultura-render"
 GH_CLI = r"C:\Program Files\GitHub CLI\gh.exe"
 
 
@@ -60,7 +60,7 @@ def resolve_artifact_id(token: str, repo: str = REPO, run_id: str | None = None,
     return str(artifacts[0]["id"]), artifacts[0]["name"]
 
 
-def download_artifact(artifact_id: str, out_dir: str = "prevencion-72h-video/out/", repo: str = REPO):
+def download_artifact(artifact_id: str, out_dir: str = "out/", repo: str = REPO):
     token = get_gh_token()
     api_url = f"https://api.github.com/repos/{repo}/actions/artifacts/{artifact_id}/zip"
     
@@ -99,54 +99,50 @@ def download_artifact(artifact_id: str, out_dir: str = "prevencion-72h-video/out
         end = total_len - 1 if i == num_threads - 1 else (i + 1) * chunk_size - 1
         ranges.append((i, start, end))
         
-    def download_range(r):
-        idx, s, e = r
-        chunk_req = urllib.request.Request(signed_url, headers={"Range": f"bytes={s}-{e}"})
-        with urllib.request.urlopen(chunk_req) as chunk_resp:
-            return idx, chunk_resp.read()
+    chunks = [None] * num_threads
+    
+    def download_range(idx: int, start: int, end: int):
+        range_req = urllib.request.Request(signed_url, headers={"Range": f"bytes={start}-{end}"})
+        with urllib.request.urlopen(range_req) as resp:
+            return idx, resp.read()
             
-    chunks = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as pool:
-        for idx, chunk_data in pool.map(download_range, ranges):
-            chunks[idx] = chunk_data
-            print(f"  [+] Hilo {idx + 1}/{num_threads} completado ({round(len(chunk_data)/1024/1024, 1)} MB)")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+        futures = [executor.submit(download_range, idx, start, end) for idx, start, end in ranges]
+        for f in concurrent.futures.as_completed(futures):
+            idx, data = f.result()
+            chunks[idx] = data
             
+    zip_bytes = b"".join(chunks)
+    zip_path = os.path.join(out_dir, "temp_artifact.zip")
     os.makedirs(out_dir, exist_ok=True)
-    zip_path = os.path.join(out_dir, "downloaded_artifact.zip")
     with open(zip_path, "wb") as f:
-        for i in range(num_threads):
-            f.write(chunks[i])
-            
-    print(f"Descomprimiendo en {out_dir}...")
-    with zipfile.ZipFile(zip_path) as z:
+        f.write(zip_bytes)
+        
+    print("Descomprimiendo artefacto...")
+    with zipfile.ZipFile(zip_path, "r") as z:
         z.extractall(out_dir)
-        names = z.namelist()
         
-    try:
-        os.remove(zip_path)
-    except OSError:
-        pass
-        
-    print(f"¡Extracción exitosa! Archivos listos: {names}")
+    os.remove(zip_path)
+    print(f"Artefacto extraído exitosamente en {out_dir}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Descarga ultra rápida de artefactos de GitHub Actions.")
-    parser.add_argument("--repo", type=str, default=REPO, help="Repositorio owner/name.")
-    parser.add_argument("--run", type=str, help="ID de la corrida de GitHub Actions.")
-    parser.add_argument("--id", type=str, help="ID directo del artefacto.")
-    parser.add_argument("--name", type=str, help="Filtro de nombre del artefacto (ej. 'final').")
-    parser.add_argument("--out", type=str, default="prevencion-72h-video/out/", help="Directorio de destino.")
+    parser = argparse.ArgumentParser(description="Descarga ultra rápida multihilo de artefactos GitHub")
+    parser.add_argument("--id", help="ID del artefacto directo")
+    parser.add_argument("--run", help="ID de la corrida (workflow run) de GitHub Actions")
+    parser.add_argument("--repo", default=REPO, help="Repositorio propietario/nombre")
+    parser.add_argument("--out", default="out/", help="Directorio destino de salida")
+    parser.add_argument("--filter", help="Filtro por nombre de artefacto")
     args = parser.parse_args()
     
     token = get_gh_token()
     if args.id:
         art_id = args.id
-        print(f"Usando artefacto explícito: {art_id}")
+        art_name = "direct"
     else:
-        art_id, art_name = resolve_artifact_id(token, repo=args.repo, run_id=args.run, name_filter=args.name)
-        print(f"Artefacto seleccionado: {art_name} (ID: {art_id})")
+        art_id, art_name = resolve_artifact_id(token, repo=args.repo, run_id=args.run, name_filter=args.filter)
         
+    print(f"Descargando artefacto '{art_name}' (ID: {art_id}) desde {args.repo}...")
     download_artifact(art_id, out_dir=args.out, repo=args.repo)
 
 
